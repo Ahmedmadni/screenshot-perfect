@@ -1,0 +1,39 @@
+/**
+ * Original TrueType files for the bundled fonts, used by the glyph engine
+ * (Google Fonts' CSS API only serves WOFF2, which HarfBuzz cannot read).
+ * Pinned to one commit of the google/fonts repository so outlines are reproducible.
+ */
+const COMMIT = "9b59ea9f333c5b8a99fa44e2a698496d6cde5b8e";
+const BASE = `https://raw.githubusercontent.com/google/fonts/${COMMIT}/ofl/`;
+
+export interface BundledSource {
+  regular: string;
+  bold?: string;
+  /** Variable font with a wght axis covering 400–700. */
+  variable?: boolean;
+}
+
+export const BUNDLED_SOURCES: Record<string, BundledSource> = {
+  Amiri: { regular: "amiri/Amiri-Regular.ttf", bold: "amiri/Amiri-Bold.ttf" },
+  "Noto Naskh Arabic": { regular: "notonaskharabic/NotoNaskhArabic%5Bwght%5D.ttf", variable: true },
+  "Scheherazade New": { regular: "scheherazadenew/ScheherazadeNew-Regular.ttf", bold: "scheherazadenew/ScheherazadeNew-Bold.ttf" },
+  Lateef: { regular: "lateef/Lateef-Regular.ttf", bold: "lateef/Lateef-Bold.ttf" },
+  "Markazi Text": { regular: "markazitext/MarkaziText%5Bwght%5D.ttf", variable: true },
+  "Aref Ruqaa": { regular: "arefruqaa/ArefRuqaa-Regular.ttf", bold: "arefruqaa/ArefRuqaa-Bold.ttf" },
+  "Reem Kufi": { regular: "reemkufi/ReemKufi%5Bwght%5D.ttf", variable: true },
+  "Noto Kufi Arabic": { regular: "notokufiarabic/NotoKufiArabic%5Bwght%5D.ttf", variable: true },
+  Rakkas: { regular: "rakkas/Rakkas-Regular.ttf" },
+};
+
+export function bundledFontUrl(family: string, weight: number): { url: string; file: string; needsVariation: boolean; hasRealBold: boolean } | null {
+  const s = BUNDLED_SOURCES[family];
+  if (!s) return null;
+  const bold = weight >= 600;
+  const path = bold && s.bold ? s.bold : s.regular;
+  return {
+    url: BASE + path,
+    file: decodeURIComponent(path.split("/").pop()!),
+    needsVariation: !!s.variable,
+    hasRealBold: !!s.bold || !!s.variable,
+  };
+}
