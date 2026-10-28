@@ -117,7 +117,9 @@ export function Editor() {
         return;
       } else {
         const scale = kind === "png1" ? 1 : kind === "png2" ? 2 : 4;
-        downloadBlob(await exportPNG(doc, scale), `${name}@${scale}x.png`);
+        const { blob, warnings } = await exportPNG(doc, scale);
+        downloadBlob(blob, `${name}@${scale}x.png`);
+        warnings.forEach((w) => toast.warning(w));
       }
       toast.success("Export complete");
     } catch (e) {

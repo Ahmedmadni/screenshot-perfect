@@ -73,8 +73,8 @@ describe("OpenType features", () => {
 describe("project compatibility", () => {
   it("opens a v1 project and migrates it to v2 with empty calligraphy data", () => {
     const v1 = createSampleProject() as unknown as Record<string, unknown>;
-    v1.version = 1;
-    v1.objects = (v1.objects as Record<string, unknown>[]).map(({ kashida: _k, features: _f, marks: _m, ...rest }) => rest);
+    v1["version"] = 1;
+    v1["objects"] = (v1["objects"] as Record<string, unknown>[]).map(({ kashida: _k, features: _f, marks: _m, ...rest }) => rest);
     const { project } = parseProjectFile(JSON.stringify({ project: v1, fonts: [] }));
     expect(project.version).toBe(2);
     const t = project.objects.find((o) => o.type === "text");
