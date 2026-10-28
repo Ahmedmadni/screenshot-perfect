@@ -21,8 +21,29 @@ export interface BaseObject {
 export type TextAlign = "start" | "center" | "end";
 export type TextDirection = "rtl" | "ltr";
 
+/** Tatweel elongation after the base letter at UTF-16 index `at` of the original text. */
+export interface Kashida {
+  at: number;
+  count: number;
+}
+
+/**
+ * Independent placement of one diacritic. `at` is the UTF-16 index of the mark
+ * character in the original text, `ch` the mark itself (used to detect stale
+ * entries after the text is edited). Offsets are in em (fractions of font size),
+ * y grows downward.
+ */
+export interface MarkAdjust {
+  at: number;
+  ch: string;
+  dx: number;
+  dy: number;
+  scale: number;
+}
+
 export interface TextObject extends BaseObject {
   type: "text";
+  /** Original Unicode text, never modified by calligraphic adjustments. */
   text: string;
   fontFamily: string;
   fontSize: number;
@@ -33,6 +54,10 @@ export interface TextObject extends BaseObject {
   letterSpacing: number;
   wordSpacing: number;
   lineHeight: number;
+  kashida: Kashida[];
+  /** OpenType feature overrides (tag → value). Only non-default settings are stored. */
+  features: Record<string, number>;
+  marks: MarkAdjust[];
 }
 
 export type ShapeKind = "rect" | "ellipse" | "diamond" | "star8" | "arch";
