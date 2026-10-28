@@ -36,6 +36,8 @@ export interface Box {
 
 export interface PlacedGlyph {
   gid: number;
+  /** Original text index of the glyph's cluster (-1 for inserted tatweel). */
+  src: number;
   /** Outline in font units, y up. Drawn with matrix(k 0 0 -k tx ty) in object-local px. */
   d: string;
   k: number;
@@ -168,7 +170,7 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
           const gid = g.codepoint;
           const ch = line[g.cluster] ?? "";
           if (gid === 0 && !/\s/.test(ch)) missing.add(ch);
-          const pg: PlacedGlyph = { gid, d: sf.glyphPath(gid), k, tx: (pen + (g.xOffset ?? 0)) * k, ty: -(g.yOffset ?? 0) * k };
+          const pg: PlacedGlyph = { gid, src: map[lineStart + g.cluster] ?? -1, d: sf.glyphPath(gid), k, tx: (pen + (g.xOffset ?? 0)) * k, ty: -(g.yOffset ?? 0) * k };
           const li = markOf.get(gi);
           if (li !== undefined) {
             markCount++;
