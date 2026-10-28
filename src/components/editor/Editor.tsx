@@ -302,7 +302,7 @@ export function Editor() {
                     onClick={() => {
                       if (!confirmDiscard()) return;
                       const d = loadProjectLocal(p.id);
-                      if (!d) return toast.error("This project could not be read.");
+                      if (!d) { toast.error("This project could not be read."); return; }
                       loadDoc(d, true);
                       setLastProject(d.id);
                       setOpenDlg(false);
