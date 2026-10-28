@@ -74,7 +74,7 @@ export async function sceneToPdf(scene: Scene, opts: PdfOptions): Promise<Uint8A
   const W = scene.width;
   const H = scene.height;
   const objects: (Uint8Array | string)[] = []; // index i → object number i+1
-  const add = (o: Uint8Array | string) => objects.push(o) && objects.length;
+  const add = (o: Uint8Array | string) => objects.push(o);
   const stream = async (dict: string, body: string) => {
     let data = enc.encode(body);
     let filter = "";
@@ -122,7 +122,7 @@ export async function sceneToPdf(scene: Scene, opts: PdfOptions): Promise<Uint8A
   objects[3] = await stream("", body.join("\n"));
   objects[4] = `<< /Title ${pdfString(opts.title)} /Producer ${pdfString("Arabic Calligraphy Studio")} /CreationDate (${date}) >>`;
 
-  const chunks: Uint8Array[] = [enc.encode("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n".replace(/[\u0080-\u00ff]/g, "~"))];
+  const chunks: Uint8Array[] = [new Uint8Array([...enc.encode("%PDF-1.4\n%"), 0xe2, 0xe3, 0xcf, 0xd3, 0x0a])];
   let offset = chunks[0]!.byteLength;
   const offsets: number[] = [];
   objects.forEach((o, i) => {
