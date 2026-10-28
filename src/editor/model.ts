@@ -75,9 +75,12 @@ export interface ShapeObject extends BaseObject {
 
 export type EditorObject = TextObject | ShapeObject;
 
+/** Current project format version. v1 files are migrated on load (see storage.ts). */
+export const PROJECT_VERSION = 2;
+
 export interface ProjectDoc {
   format: "acs-project";
-  version: 1;
+  version: typeof PROJECT_VERSION;
   id: string;
   name: string;
   width: number;
@@ -95,7 +98,7 @@ export function createProject(partial: Partial<ProjectDoc> = {}): ProjectDoc {
   const now = new Date().toISOString();
   return {
     format: "acs-project",
-    version: 1,
+    version: PROJECT_VERSION,
     id: uid(),
     name: "مشروع جديد",
     width: 1200,
@@ -130,8 +133,16 @@ export function createText(doc: ProjectDoc, partial: Partial<TextObject> = {}): 
     letterSpacing: 0,
     wordSpacing: 0,
     lineHeight: 1.6,
+    kashida: [],
+    features: {},
+    marks: [],
     ...partial,
   };
+}
+
+/** True when the object needs the glyph engine (features or diacritic adjustments). */
+export function needsGlyphEngine(o: TextObject): boolean {
+  return Object.keys(o.features).length > 0 || o.marks.length > 0;
 }
 
 export const SHAPE_LABELS: Record<ShapeKind, string> = {
