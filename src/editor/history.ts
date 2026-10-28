@@ -24,12 +24,13 @@ export function replace<T>(h: History<T>, next: T): History<T> {
 
 export function undo<T>(h: History<T>): History<T> {
   if (!h.past.length) return h;
-  const prev = h.past[h.past.length - 1];
+  const prev = h.past[h.past.length - 1] as T;
   return { past: h.past.slice(0, -1), present: prev, future: [h.present, ...h.future] };
 }
 
 export function redo<T>(h: History<T>): History<T> {
   if (!h.future.length) return h;
-  const [next, ...rest] = h.future;
+  const next = h.future[0] as T;
+  const rest = h.future.slice(1);
   return { past: [...h.past, h.present].slice(-HISTORY_LIMIT), present: next, future: rest };
 }
