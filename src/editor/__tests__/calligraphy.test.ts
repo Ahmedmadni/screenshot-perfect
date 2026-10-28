@@ -116,6 +116,6 @@ describe("vector export", () => {
     const offsets = [...s.slice(startxref).matchAll(/(\d{10}) 00000 n/g)].map((m) => +m[1]!);
     offsets.forEach((off, i) => expect(s.slice(off, off + `${i + 1} 0 obj`.length)).toBe(`${i + 1} 0 obj`));
     expect(s).toContain("/ca 0.5");
-    expect(s).toContain("1 0 0 1 rg");
+    expect(s).toContain("1 0 0 rg");
   });
 });
