@@ -12,4 +12,8 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    // harfbuzzjs locates its .wasm via new URL(..., import.meta.url); pre-bundling would break that path.
+    optimizeDeps: { exclude: ["harfbuzzjs"] },
+  },
 });

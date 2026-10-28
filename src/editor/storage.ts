@@ -1,6 +1,6 @@
 /** Project serialization and local persistence (browser storage + downloadable .acs.json files). */
 import { z } from "zod";
-import type { ProjectDoc } from "./model";
+import { PROJECT_VERSION, type ProjectDoc } from "./model";
 
 const base = {
   id: z.string(),
@@ -26,6 +26,12 @@ const textSchema = z.object({
   letterSpacing: z.number(),
   wordSpacing: z.number(),
   lineHeight: z.number().positive(),
+  // Added in project format v2; v1 files get safe defaults.
+  kashida: z.array(z.object({ at: z.number().int().min(0), count: z.number().int().min(0).max(50) })).default([]),
+  features: z.record(z.number().int().min(0).max(99)).default({}),
+  marks: z
+    .array(z.object({ at: z.number().int().min(0), ch: z.string(), dx: z.number(), dy: z.number(), scale: z.number().positive() }))
+    .default([]),
 });
 
 const shapeSchema = z.object({
@@ -40,9 +46,9 @@ const shapeSchema = z.object({
   cornerRadius: z.number().min(0),
 });
 
-export const projectSchema = z.object({
+const projectSchemaRaw = z.object({
   format: z.literal("acs-project"),
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   id: z.string(),
   name: z.string(),
   width: z.number().positive(),
@@ -54,6 +60,9 @@ export const projectSchema = z.object({
   updatedAt: z.string(),
 });
 
+/** Accepts v1 and v2 projects and migrates them to the current version without dropping data. */
+export const projectSchema = projectSchemaRaw.transform((p) => ({ ...p, version: PROJECT_VERSION }) as ProjectDoc);
+
 const fileSchema = z.object({
   project: projectSchema,
   fonts: z
@@ -61,7 +70,7 @@ const fileSchema = z.object({
     .default([]),
 });
 
-export type ProjectFile = z.infer<typeof fileSchema>;
+export type ProjectFile = { project: ProjectDoc; fonts: z.infer<typeof fileSchema>["fonts"] };
 
 export function parseProjectFile(text: string): ProjectFile {
   let json: unknown;
@@ -114,7 +123,7 @@ export function loadProjectLocal(id: string): ProjectDoc | null {
     const raw = localStorage.getItem(docKey(id));
     if (!raw) return null;
     const r = projectSchema.safeParse(JSON.parse(raw));
-    return r.success ? (r.data as ProjectDoc) : null;
+    return r.success ? r.data : null;
   } catch {
     return null;
   }
