@@ -84,8 +84,9 @@ describe("glyph layout with HarfBuzz", () => {
     const tags = sf.face.getTableFeatureTags("GSUB");
     expect(tags).toContain("ss01");
     expect(tags).not.toContain("dlig");
-    // Amiri's ss06 changes the shaping of the basmala; ss08 changes Arabic punctuation.
-    expect(gids(text(BISMILLAH, { features: { ss06: 1 } }))).not.toBe(gids(text(BISMILLAH)));
+    // Amiri's ss06 changes the unvocalised basmala; ss08 changes Arabic punctuation.
+    const plainBasmala = "بسم الله الرحمن الرحيم";
+    expect(gids(text(plainBasmala, { features: { ss06: 1 } }))).not.toBe(gids(text(plainBasmala)));
     expect(gids(text("،؛؟", { features: { ss08: 1 } }))).not.toBe(gids(text("،؛؟")));
     expect(gids(text(BISMILLAH, { features: { ss01: 1 } }))).toBe(gids(text(BISMILLAH)));
   });
