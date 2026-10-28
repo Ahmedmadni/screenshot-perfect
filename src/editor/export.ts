@@ -52,7 +52,7 @@ function drawText(ctx: CanvasRenderingContext2D, o: TextObject) {
   const { width } = objectSize(o);
   const ax = lineAnchorX(o, width);
   const offsets = lineOffsets(o);
-  o.text.split("\n").forEach((line, i) => ctx.fillText(line, ax, offsets[i]));
+  o.text.split("\n").forEach((line, i) => ctx.fillText(line, ax, offsets[i] ?? 0));
 }
 
 const usedFonts = (doc: ProjectDoc) => [...new Set(doc.objects.flatMap((o) => (o.type === "text" && !o.hidden ? [o.fontFamily] : [])))];

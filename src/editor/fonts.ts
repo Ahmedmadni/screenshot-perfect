@@ -238,7 +238,7 @@ class FontService {
     if (!BUNDLED_FONTS.some((b) => b.family === family)) return null;
     try {
       const css = await (await fetch(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@400;700`)).text();
-      const urls = [...new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map((m) => m[1]))];
+      const urls = [...new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map((m) => m[1] as string))];
       let out = css;
       for (const u of urls) {
         const buf = await (await fetch(u)).arrayBuffer();

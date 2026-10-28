@@ -4,12 +4,12 @@ import type { EditorObject, ProjectDoc } from "./model";
 
 interface State {
   h: History<ProjectDoc>;
-  lastKey?: string;
+  lastKey?: string | undefined;
   lastAt: number;
 }
 
 type Action =
-  | { type: "commit"; doc: ProjectDoc; key?: string }
+  | { type: "commit"; doc: ProjectDoc; key?: string | undefined }
   | { type: "replace"; doc: ProjectDoc }
   | { type: "commitFrom"; base: ProjectDoc }
   | { type: "undo" }
@@ -78,7 +78,7 @@ export function useEditor(initial: ProjectDoc) {
       const objs = [...doc.objects];
       const i = objs.findIndex((o) => o.id === id);
       if (i < 0) return;
-      const [o] = objs.splice(i, 1);
+      const o = objs.splice(i, 1)[0] as EditorObject;
       const j = to === "top" ? objs.length : to === "bottom" ? 0 : to === "up" ? Math.min(objs.length, i + 1) : Math.max(0, i - 1);
       objs.splice(j, 0, o);
       if (j !== i) setDoc({ ...doc, objects: objs });
