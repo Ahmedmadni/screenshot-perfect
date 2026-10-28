@@ -2,6 +2,7 @@
  * Project data model. The original Unicode text and all editable properties
  * are stored here, independently of any rendered output.
  */
+import { applyKashida } from "./calligraphy/kashida";
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -21,8 +22,29 @@ export interface BaseObject {
 export type TextAlign = "start" | "center" | "end";
 export type TextDirection = "rtl" | "ltr";
 
+/** Tatweel elongation after the base letter at UTF-16 index `at` of the original text. */
+export interface Kashida {
+  at: number;
+  count: number;
+}
+
+/**
+ * Independent placement of one diacritic. `at` is the UTF-16 index of the mark
+ * character in the original text, `ch` the mark itself (used to detect stale
+ * entries after the text is edited). Offsets are in em (fractions of font size),
+ * y grows downward.
+ */
+export interface MarkAdjust {
+  at: number;
+  ch: string;
+  dx: number;
+  dy: number;
+  scale: number;
+}
+
 export interface TextObject extends BaseObject {
   type: "text";
+  /** Original Unicode text, never modified by calligraphic adjustments. */
   text: string;
   fontFamily: string;
   fontSize: number;
@@ -33,6 +55,10 @@ export interface TextObject extends BaseObject {
   letterSpacing: number;
   wordSpacing: number;
   lineHeight: number;
+  kashida: Kashida[];
+  /** OpenType feature overrides (tag → value). Only non-default settings are stored. */
+  features: Record<string, number>;
+  marks: MarkAdjust[];
 }
 
 export type ShapeKind = "rect" | "ellipse" | "diamond" | "star8" | "arch";
@@ -50,9 +76,12 @@ export interface ShapeObject extends BaseObject {
 
 export type EditorObject = TextObject | ShapeObject;
 
+/** Current project format version. v1 files are migrated on load (see storage.ts). */
+export const PROJECT_VERSION = 2;
+
 export interface ProjectDoc {
   format: "acs-project";
-  version: 1;
+  version: typeof PROJECT_VERSION;
   id: string;
   name: string;
   width: number;
@@ -70,7 +99,7 @@ export function createProject(partial: Partial<ProjectDoc> = {}): ProjectDoc {
   const now = new Date().toISOString();
   return {
     format: "acs-project",
-    version: 1,
+    version: PROJECT_VERSION,
     id: uid(),
     name: "مشروع جديد",
     width: 1200,
@@ -105,8 +134,16 @@ export function createText(doc: ProjectDoc, partial: Partial<TextObject> = {}): 
     letterSpacing: 0,
     wordSpacing: 0,
     lineHeight: 1.6,
+    kashida: [],
+    features: {},
+    marks: [],
     ...partial,
   };
+}
+
+/** True when the object needs the glyph engine (features or diacritic adjustments). */
+export function needsGlyphEngine(o: TextObject): boolean {
+  return Object.keys(o.features).length > 0 || o.marks.length > 0;
 }
 
 export const SHAPE_LABELS: Record<ShapeKind, string> = {
@@ -189,9 +226,14 @@ export function fontCss(o: Pick<TextObject, "fontFamily" | "fontSize" | "fontWei
 
 let measureCtx: CanvasRenderingContext2D | null = null;
 
+/** Text actually drawn: the original text plus any tatweel elongation (separate data). */
+export function displayText(o: Pick<TextObject, "text" | "kashida">): string {
+  return applyKashida(o.text, o.kashida).text;
+}
+
 /** Measures text with the browser's shaping engine (same engine used for rendering). */
 export function measureText(o: TextObject): { width: number; height: number } {
-  const lines = o.text.split("\n");
+  const lines = displayText(o).split("\n");
   const height = Math.max(1, lines.length) * o.fontSize * o.lineHeight;
   if (typeof document === "undefined") {
     const longest = Math.max(...lines.map((l) => l.length), 1);
@@ -208,8 +250,19 @@ export function measureText(o: TextObject): { width: number; height: number } {
   return { width, height };
 }
 
-export function objectSize(o: EditorObject): { width: number; height: number } {
+type GlyphSizeProvider = (o: TextObject) => { width: number; height: number } | null;
+let glyphSizeProvider: GlyphSizeProvider | null = null;
+/** The glyph engine registers itself here so bounds match glyph-rendered text. */
+export function setGlyphSizeProvider(p: GlyphSizeProvider | null) {
+  glyphSizeProvider = p;
+}
+
+export function objectSize(o: EditorObject, forceGlyph = false): { width: number; height: number } {
   if (o.type === "shape") return { width: o.width, height: o.height };
+  if ((forceGlyph || needsGlyphEngine(o)) && glyphSizeProvider) {
+    const g = glyphSizeProvider(o);
+    if (g) return g;
+  }
   const m = measureText(o);
   return { width: m.width + o.fontSize * 0.2, height: m.height };
 }
