@@ -75,7 +75,7 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
             <Num label="Height" value={doc.height} min={16} max={8000} onChange={(n) => setDoc({ ...doc, height: Math.round(n) }, "h")} />
           </div>
           <div className="flex flex-wrap gap-1">
-            {[[1200, 800], [1080, 1080], [1080, 1350], [1920, 1080], [2480, 3508]].map(([w, h]) => (
+            {([[1200, 800], [1080, 1080], [1080, 1350], [1920, 1080], [2480, 3508]] as [number, number][]).map(([w, h]) => (
               <button key={`${w}x${h}`} onClick={() => setDoc({ ...doc, width: w, height: h })} className="rounded border border-input px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent">
                 {w}×{h}
               </button>

@@ -197,8 +197,8 @@ export function Editor() {
         <header className="flex h-12 shrink-0 items-center gap-1 border-b bg-panel px-2">
           <div className="flex items-center gap-2 pe-3">
             <span className="flex size-8 items-center justify-center rounded-md bg-primary font-display text-lg text-primary-foreground" dir="rtl">ق</span>
-            <div className="hidden leading-tight md:block">
-              <div className="text-sm font-semibold">Arabic Calligraphy Studio</div>
+            <div className="hidden max-w-52 leading-tight xl:block">
+              <div className="truncate text-sm font-semibold">Arabic Calligraphy Studio</div>
               <div className="truncate text-[11px] text-muted-foreground" dir="auto">{doc.name}</div>
             </div>
           </div>
@@ -302,7 +302,7 @@ export function Editor() {
                     onClick={() => {
                       if (!confirmDiscard()) return;
                       const d = loadProjectLocal(p.id);
-                      if (!d) return toast.error("This project could not be read.");
+                      if (!d) { toast.error("This project could not be read."); return; }
                       loadDoc(d, true);
                       setLastProject(d.id);
                       setOpenDlg(false);
