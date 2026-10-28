@@ -61,9 +61,12 @@ describe("glyph layout with HarfBuzz", () => {
 
   it("tatweel elongation widens the word using real tatweel glyphs", () => {
     const plain = layoutText(sf, text("بسم"));
+    const short = layoutText(sf, text("بسم", { kashida: [{ at: 1, count: 1 }] }));
     const long = layoutText(sf, text("بسم", { kashida: [{ at: 1, count: 4 }] }));
-    expect(long.boxWidth).toBeGreaterThan(plain.boxWidth + 50);
-    expect(long.glyphs.filter((g) => g.src === -1)).toHaveLength(4);
+    expect(short.boxWidth).toBeGreaterThan(plain.boxWidth);
+    expect(long.boxWidth).toBeGreaterThan(short.boxWidth + 50);
+    // Amiri substitutes a run of tatweels with one stretched kashida glyph.
+    expect(long.glyphs.filter((g) => g.src === -1).length).toBeGreaterThanOrEqual(1);
     expect(long.missing).toEqual([]);
   });
 
@@ -81,9 +84,9 @@ describe("glyph layout with HarfBuzz", () => {
     const tags = sf.face.getTableFeatureTags("GSUB");
     expect(tags).toContain("ss01");
     expect(tags).not.toContain("dlig");
-    // Disabling standard ligatures must change lam-alef shaping in Amiri? Not guaranteed; check a feature that exists.
-    const t = "كمل الكلام";
-    const variants = ["ss01", "ss02", "ss03", "ss04", "ss05", "ss06", "ss07", "ss08"].map((ss) => gids(text(t, { features: { [ss]: 1 } })));
-    expect(variants.some((v) => v !== gids(text(t)))).toBe(true);
+    // Amiri's ss06 changes the shaping of the basmala; ss08 changes Arabic punctuation.
+    expect(gids(text(BISMILLAH, { features: { ss06: 1 } }))).not.toBe(gids(text(BISMILLAH)));
+    expect(gids(text("،؛؟", { features: { ss08: 1 } }))).not.toBe(gids(text("،؛؟")));
+    expect(gids(text(BISMILLAH, { features: { ss01: 1 } }))).toBe(gids(text(BISMILLAH)));
   });
 });
