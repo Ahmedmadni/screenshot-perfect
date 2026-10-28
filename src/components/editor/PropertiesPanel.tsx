@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { SHAPE_LABELS, uid, type EditorObject, type ShapeKind, type TextAlign } from "@/editor/model";
 import type { Editor } from "@/editor/useEditor";
 import { FontPicker } from "./FontPicker";
+import { CalligraphyPanel } from "./CalligraphyPanel";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -143,9 +144,10 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
             <Num label="Word sp." value={o.wordSpacing} onChange={(n) => up({ wordSpacing: n }, "ws")} />
             <Num label="Line height" value={o.lineHeight} min={0.5} max={5} step={0.1} onChange={(n) => up({ lineHeight: n }, "lh")} />
           </div>
-          {o.letterSpacing !== 0 && <p className="text-[11px] text-warning">Letter spacing can break Arabic letter joining. Use tatweel (ـ) for elongation.</p>}
+          {o.letterSpacing !== 0 && <p className="text-[11px] text-warning">Letter spacing can break Arabic letter joining. Use tatweel elongation in Calligraphy below instead.</p>}
         </Section>
       )}
+      {o.type === "text" && <CalligraphyPanel editor={editor} o={o} />}
 
       {o.type === "shape" && (
         <Section title="Shape · الشكل">

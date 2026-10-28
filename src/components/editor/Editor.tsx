@@ -12,7 +12,11 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { createProject, createSampleProject, createShape, createText, uid, type ShapeKind, type TextObject } from "@/editor/model";
 import { fontService } from "@/editor/fonts";
-import { exportPNG, exportSVG } from "@/editor/export";
+import { exportOutlineSVG, exportPDF, exportPNG, exportSVG } from "@/editor/export";
+import { remapAdjustments } from "@/editor/calligraphy/remap";
+import { getMarkAdjust, setMarkAdjust } from "@/editor/calligraphy/marks";
+import type { PdfBackground, PdfPage } from "@/editor/glyphs/pdf";
+import { PdfExportDialog } from "./PdfExportDialog";
 import { deleteProjectLocal, downloadBlob, lastProjectId, listProjects, loadProjectLocal, parseProjectFile, safeFileName, saveProjectLocal, setLastProject, type ProjectMeta } from "@/editor/storage";
 import { useEditor } from "@/editor/useEditor";
 import { CanvasView } from "./CanvasView";
@@ -52,6 +56,7 @@ export function Editor() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<"left" | "right" | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const canvasWrap = useRef<HTMLDivElement>(null);
   const fonts = useFonts();
@@ -101,7 +106,7 @@ export function Editor() {
   };
   const addShape = (k: ShapeKind) => addObject(createShape(doc, k));
 
-  const doExport = async (kind: "png1" | "png2" | "png4" | "svg" | "project") => {
+  const doExport = async (kind: "png1" | "png2" | "png4" | "svg" | "outline" | "project") => {
     setExporting(true);
     const name = safeFileName(doc.name);
     try {
@@ -110,11 +115,14 @@ export function Editor() {
         const file = { project: doc, fonts: fontService.exportUploaded(families) };
         downloadBlob(new Blob([JSON.stringify(file)], { type: "application/json" }), `${name}.acs.json`);
       } else if (kind === "svg") {
-        const { blob, missing } = await exportSVG(doc);
+        const { blob, missing, outlinedCount } = await exportSVG(doc);
         downloadBlob(blob, `${name}.svg`);
+        if (outlinedCount) toast.info(`${outlinedCount} text object(s) with moved diacritics were written as outlines; the rest stays editable text.`);
         if (missing.length) toast.warning(`SVG exported, but these fonts could not be embedded: ${missing.join(", ")}. The text may look different in other apps.`);
-        else { toast.success("SVG exported with embedded fonts"); return; }
+        else toast.success("Editable SVG exported with embedded fonts. Some SVG viewers ignore embedded fonts; use Outline SVG when the look must be exact.");
         return;
+      } else if (kind === "outline") {
+        downloadBlob(await exportOutlineSVG(doc), `${name}-outlines.svg`);
       } else {
         const scale = kind === "png1" ? 1 : kind === "png2" ? 2 : 4;
         const { blob, warnings } = await exportPNG(doc, scale);
@@ -124,6 +132,19 @@ export function Editor() {
       toast.success("Export complete");
     } catch (e) {
       toast.error(`Export failed: ${(e as Error).message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const doPdf = async (opts: { page: PdfPage; background: PdfBackground }) => {
+    setExporting(true);
+    try {
+      downloadBlob(await exportPDF(doc, opts), `${safeFileName(doc.name)}.pdf`);
+      setPdfOpen(false);
+      toast.success("Vector PDF exported");
+    } catch (e) {
+      toast.error(`PDF export failed: ${(e as Error).message}`);
     } finally {
       setExporting(false);
     }
@@ -141,6 +162,9 @@ export function Editor() {
     }
   };
 
+  const markObj = editor.markEdit ? doc.objects.find((o) => o.id === editor.markEdit!.objectId) : undefined;
+  const markTarget = markObj?.type === "text" && editor.markEdit?.at != null && !markObj.locked ? { o: markObj, at: editor.markEdit.at } : null;
+
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -154,8 +178,19 @@ export function Editor() {
       else if (mod && (k === "=" || k === "+")) { e.preventDefault(); setZoom(zoom * 1.2); }
       else if (mod && k === "-") { e.preventDefault(); setZoom(zoom / 1.2); }
       else if (mod && k === "0") { e.preventDefault(); fit(); }
+      else if (markTarget && k.startsWith("arrow")) {
+        e.preventDefault();
+        const { o, at } = markTarget;
+        const d = (e.shiftKey ? 10 : 1) / o.fontSize;
+        const a = getMarkAdjust(o.marks, at);
+        const dx = (a?.dx ?? 0) + (k === "arrowleft" ? -d : k === "arrowright" ? d : 0);
+        const dy = (a?.dy ?? 0) + (k === "arrowup" ? -d : k === "arrowdown" ? d : 0);
+        const ch = a?.ch ?? o.text[at] ?? "";
+        updateObject(o.id, { marks: setMarkAdjust(o.marks, at, ch, { dx: Math.round(dx * 1000) / 1000, dy: Math.round(dy * 1000) / 1000 }) }, `mark:${at}:nudge`);
+      }
+      else if (editor.markEdit && (k === "delete" || k === "backspace")) e.preventDefault();
       else if ((k === "delete" || k === "backspace") && selectedId) { e.preventDefault(); removeObject(selectedId); }
-      else if (k === "escape") editor.setSelectedId(null);
+      else if (k === "escape") { if (editor.markEdit) editor.setMarkEdit(null); else editor.setSelectedId(null); }
       else if (k === "enter" && selected?.type === "text") { e.preventDefault(); setEditingId(selected.id); }
       else if (!mod && k === "t") addText();
       else if (selected && !selected.locked && k.startsWith("arrow")) {
@@ -240,7 +275,17 @@ export function Editor() {
               <DropdownMenuItem onClick={() => doExport("png1")}>PNG · 1×</DropdownMenuItem>
               <DropdownMenuItem onClick={() => doExport("png2")}>PNG · 2× (high-res)</DropdownMenuItem>
               <DropdownMenuItem onClick={() => doExport("png4")}>PNG · 4× (print)</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => doExport("svg")}>SVG · live text + embedded fonts</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Vector</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => doExport("svg")}>
+                <div><div>SVG · editable text</div><div className="text-[11px] text-muted-foreground">Text stays editable; fonts embedded</div></div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => doExport("outline")}>
+                <div><div>SVG · outlines</div><div className="text-[11px] text-muted-foreground">Exact look, no fonts needed</div></div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPdfOpen(true)}>
+                <div><div>PDF · vector, print-ready…</div><div className="text-[11px] text-muted-foreground">Choose page size and background</div></div>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Project</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => doExport("project")}>Download project file (.acs.json)</DropdownMenuItem>
@@ -284,10 +329,13 @@ export function Editor() {
           obj={editing}
           onClose={() => setEditingId(null)}
           onSave={(text) => {
-            if (editing) updateObject(editing.id, { text });
+            // Elongation and diacritic positions follow the characters they belong to.
+            if (editing) updateObject(editing.id, { text, ...remapAdjustments(editing, text) });
             setEditingId(null);
           }}
         />
+
+        <PdfExportDialog doc={doc} open={pdfOpen} busy={exporting} onClose={() => setPdfOpen(false)} onExport={doPdf} />
 
         <Dialog open={openDlg} onOpenChange={setOpenDlg}>
           <DialogContent>
