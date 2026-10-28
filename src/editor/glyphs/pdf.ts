@@ -15,7 +15,7 @@ export interface PdfOptions {
   background: PdfBackground;
   title: string;
   /** zlib compressor for content streams (optional). */
-  deflate?: (data: Uint8Array) => Promise<Uint8Array>;
+  deflate?: ((data: Uint8Array) => Promise<Uint8Array>) | undefined;
 }
 
 /** Paper sizes in PostScript points (portrait). */
