@@ -77,7 +77,7 @@ async function createEngineFont(family: string, weight: number): Promise<EngineF
   if (!face.upem) throw new EngineError(`The glyph engine could not read ${src.label}.`);
   const axes = face.getAxisInfos();
   let synthetic = weight >= 600 && !src.realBold;
-  const wght = axes.wght;
+  const wght = axes["wght"];
   if (wght) {
     font.setVariations([new hb.Variation("wght", Math.max(wght.min, Math.min(wght.max, weight)))]);
     if (weight >= 600 && wght.max >= 600) synthetic = false;

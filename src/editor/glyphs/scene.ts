@@ -21,7 +21,7 @@ export interface SceneObject {
   id: string;
   name: string;
   /** Original text for text objects (kept as metadata in exports). */
-  text?: string;
+  text?: string | undefined;
   m: Mat;
   opacity: number;
   paths: ScenePath[];
