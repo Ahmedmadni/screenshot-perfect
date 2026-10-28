@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { commit, createHistory, redo, replace, undo, type History } from "./history";
 import type { EditorObject, ProjectDoc } from "./model";
 
@@ -38,13 +38,26 @@ function reducer(s: State, a: Action): State {
   }
 }
 
+/** Diacritic editing mode: which text object, and which mark (original text index) is selected. */
+export interface MarkEdit {
+  objectId: string;
+  at: number | null;
+}
+
 const touch = (d: ProjectDoc): ProjectDoc => ({ ...d, updatedAt: new Date().toISOString() });
 
 export function useEditor(initial: ProjectDoc) {
   const [state, dispatch] = useReducer(reducer, undefined, () => ({ h: createHistory(initial), lastAt: 0 }));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [savedDoc, setSavedDoc] = useState<ProjectDoc | null>(null);
+  const [markEdit, setMarkEdit] = useState<MarkEdit | null>(null);
   const doc = state.h.present;
+
+  // Leaving the object (selection change, deletion, undo past its creation) ends diacritic editing.
+  const markObjectAlive = !!markEdit && doc.objects.some((o) => o.id === markEdit.objectId && o.type === "text" && !o.hidden);
+  useEffect(() => {
+    if (markEdit && (markEdit.objectId !== selectedId || !markObjectAlive)) setMarkEdit(null);
+  }, [markEdit, selectedId, markObjectAlive]);
 
   const setDoc = useCallback((next: ProjectDoc, key?: string) => dispatch({ type: "commit", doc: touch(next), key }), []);
   const replaceDoc = useCallback((next: ProjectDoc) => dispatch({ type: "replace", doc: next }), []);
@@ -99,6 +112,8 @@ export function useEditor(initial: ProjectDoc) {
     selected,
     selectedId,
     setSelectedId,
+    markEdit,
+    setMarkEdit,
     setDoc,
     replaceDoc,
     commitFrom,
