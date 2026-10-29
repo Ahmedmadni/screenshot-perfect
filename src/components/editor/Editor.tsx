@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Circle, Diamond, Download, FilePlus2, FolderOpen, Layers, Maximize, Minus, MousePointer2, Plus, Redo2, Save, Settings2, SlidersHorizontal, Square, Star, Trash2, Type, Undo2, DoorClosed,
+  Circle, Diamond, Download, FilePlus2, FolderOpen, Layers, Maximize, Minus, MousePointer2, Plus, Redo2, Save, Settings2, SlidersHorizontal, Square, Star, Trash2, Type, Undo2, DoorClosed, Pen, Spline, Pencil, Waypoints,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -216,14 +216,18 @@ export function Editor() {
 
   const tools = (
     <div className="flex flex-col items-center gap-1 py-2">
-      <Tip label="Select (Esc)"><button className="tool-btn" data-active={true} aria-label="Selection tool"><MousePointer2 className="size-4" /></button></Tip>
-      <Tip label="Add text (T)"><button className="tool-btn" onClick={addText} aria-label="Add text"><Type className="size-4" /></button></Tip>
+      <Tip label="Select and transform (V)"><button className="tool-btn" data-active={editor.tool === "select"} onClick={() => editor.setTool("select")} aria-label="Selection tool"><MousePointer2 className="size-4" /></button></Tip>
+      <Tip label="Edit path nodes (N)"><button className="tool-btn" data-active={editor.tool === "node"} disabled={selected?.type !== "path"} onClick={() => editor.setTool("node")} aria-label="Edit path nodes"><Waypoints className="size-4" /></button></Tip>
+      <Tip label="Pen · click points, drag for curves (P)"><button className="tool-btn" data-active={editor.tool === "pen"} onClick={() => editor.setTool("pen")} aria-label="Pen tool"><Pen className="size-4" /></button></Tip>
+      <Tip label="Curvature tool (C)"><button className="tool-btn" data-active={editor.tool === "curvature"} onClick={() => editor.setTool("curvature")} aria-label="Curvature tool"><Spline className="size-4" /></button></Tip>
+      <Tip label="Freehand drawing (F)"><button className="tool-btn" data-active={editor.tool === "freehand"} onClick={() => editor.setTool("freehand")} aria-label="Freehand tool"><Pencil className="size-4" /></button></Tip>
+      <Tip label="Add text (T)"><button className="tool-btn" onClick={() => { editor.setTool("select"); addText(); }} aria-label="Add text"><Type className="size-4" /></button></Tip>
       <div className="my-1 h-px w-6 bg-border" />
-      <Tip label="Rectangle"><button className="tool-btn" onClick={() => addShape("rect")} aria-label="Add rectangle"><Square className="size-4" /></button></Tip>
-      <Tip label="Ellipse"><button className="tool-btn" onClick={() => addShape("ellipse")} aria-label="Add ellipse"><Circle className="size-4" /></button></Tip>
-      <Tip label="Diamond"><button className="tool-btn" onClick={() => addShape("diamond")} aria-label="Add diamond"><Diamond className="size-4" /></button></Tip>
-      <Tip label="Eight-point star"><button className="tool-btn" onClick={() => addShape("star8")} aria-label="Add eight-point star"><Star className="size-4" /></button></Tip>
-      <Tip label="Arch"><button className="tool-btn" onClick={() => addShape("arch")} aria-label="Add arch"><DoorClosed className="size-4" /></button></Tip>
+      <Tip label="Rectangle"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("rect"); }} aria-label="Add rectangle"><Square className="size-4" /></button></Tip>
+      <Tip label="Ellipse"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("ellipse"); }} aria-label="Add ellipse"><Circle className="size-4" /></button></Tip>
+      <Tip label="Diamond"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("diamond"); }} aria-label="Add diamond"><Diamond className="size-4" /></button></Tip>
+      <Tip label="Eight-point star"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("star8"); }} aria-label="Add eight-point star"><Star className="size-4" /></button></Tip>
+      <Tip label="Arch"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("arch"); }} aria-label="Add arch"><DoorClosed className="size-4" /></button></Tip>
     </div>
   );
 
