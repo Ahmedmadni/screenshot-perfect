@@ -149,6 +149,42 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
       )}
       {o.type === "text" && <CalligraphyPanel editor={editor} o={o} />}
 
+      {o.type === "path" && (
+        <Section title="Vector path · المسار">
+          <Field label="Path name">
+            <input value={o.name} onChange={(e) => up({ name: e.target.value })} className="h-8 w-full rounded-md border border-input bg-card px-2 text-sm" />
+          </Field>
+          <Color label="Fill" value={o.fill} allowNone onChange={(c) => up({ fill: c }, "path-fill")} />
+          <div className="grid grid-cols-[1fr_5rem] gap-2">
+            <Color label="Stroke" value={o.stroke} allowNone onChange={(c) => up({ stroke: c }, "path-stroke")} />
+            <Num label="Width" value={o.strokeWidth} min={0} max={1000} onChange={(n) => up({ strokeWidth: n }, "path-width")} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Fill rule">
+              <select value={o.fillRule} onChange={(e) => up({ fillRule: e.target.value as "nonzero" | "evenodd" })} className="h-8 w-full rounded-md border border-input bg-card px-2 text-xs">
+                <option value="nonzero">Non-zero</option>
+                <option value="evenodd">Even-odd</option>
+              </select>
+            </Field>
+            <Field label="Line cap">
+              <select value={o.lineCap} onChange={(e) => up({ lineCap: e.target.value as "butt" | "round" | "square" })} className="h-8 w-full rounded-md border border-input bg-card px-2 text-xs">
+                <option value="round">Round</option>
+                <option value="butt">Butt</option>
+                <option value="square">Square</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Line join">
+            <select value={o.lineJoin} onChange={(e) => up({ lineJoin: e.target.value as "miter" | "round" | "bevel" })} className="h-8 w-full rounded-md border border-input bg-card px-2 text-xs">
+              <option value="round">Round</option>
+              <option value="miter">Miter</option>
+              <option value="bevel">Bevel</option>
+            </select>
+          </Field>
+          <p className="text-[11px] text-muted-foreground">Switch to the node tool to reshape anchors and Bézier handles. Double-click a path segment to insert a node.</p>
+        </Section>
+      )}
+
       {o.type === "shape" && (
         <Section title="Shape · الشكل">
           <Field label="Kind">
