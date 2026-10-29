@@ -3,7 +3,8 @@
  * affine matrices; the outline SVG and PDF writers both consume this, so they
  * cannot drift apart.
  */
-import { shapePath, type ProjectDoc, type TextObject } from "../model";
+import { shapePath, type FillRule, type LineCap, type LineJoin, type PathObject, type ProjectDoc, type TextObject } from "../model";
+import { contoursToD } from "../paths/geometry";
 import type { TextLayout } from "./layout";
 
 export type Mat = [number, number, number, number, number, number];
@@ -15,6 +16,23 @@ export interface ScenePath {
   stroke: string | null;
   /** In the path's own (pre-matrix) units. */
   strokeWidth: number;
+  /** Defaults: nonzero fill, butt caps, round joins. */
+  fillRule?: FillRule | undefined;
+  lineCap?: LineCap | undefined;
+  lineJoin?: LineJoin | undefined;
+}
+
+export function pathObjectPath(o: PathObject): ScenePath {
+  return {
+    d: contoursToD(o.contours),
+    m: [1, 0, 0, 1, 0, 0],
+    fill: color(o.fill),
+    stroke: o.strokeWidth > 0 ? color(o.stroke) : null,
+    strokeWidth: o.strokeWidth,
+    fillRule: o.fillRule,
+    lineCap: o.lineCap,
+    lineJoin: o.lineJoin,
+  };
 }
 
 export interface SceneObject {
@@ -79,7 +97,9 @@ export function buildScene(doc: ProjectDoc, layoutFor: (o: TextObject) => TextLa
                   strokeWidth: o.strokeWidth,
                 },
               ]
-            : textPaths(o, layoutFor(o)),
+            : o.type === "path"
+              ? [pathObjectPath(o)]
+              : textPaths(o, layoutFor(o)),
       })),
   };
 }
@@ -92,8 +112,11 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 export const matAttr = (m: Mat) => `matrix(${m.map(fmt).join(" ")})`;
 
 export function pathToSvg(p: ScenePath): string {
-  const stroke = p.stroke ? ` stroke="${esc(p.stroke)}" stroke-width="${fmt(p.strokeWidth)}" stroke-linejoin="round"` : "";
-  return `<path transform="${matAttr(p.m)}" d="${p.d}" fill="${p.fill ? esc(p.fill) : "none"}"${stroke}/>`;
+  const stroke = p.stroke
+    ? ` stroke="${esc(p.stroke)}" stroke-width="${fmt(p.strokeWidth)}" stroke-linejoin="${p.lineJoin ?? "round"}"${p.lineCap && p.lineCap !== "butt" ? ` stroke-linecap="${p.lineCap}"` : ""}`
+    : "";
+  const rule = p.fillRule === "evenodd" ? ` fill-rule="evenodd"` : "";
+  return `<path transform="${matAttr(p.m)}" d="${p.d}" fill="${p.fill ? esc(p.fill) : "none"}"${rule}${stroke}/>`;
 }
 
 /** Outline SVG: every glyph is a path, so no font is needed to view it. */

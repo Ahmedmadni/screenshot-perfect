@@ -9,10 +9,10 @@
  */
 import { fontService } from "./fonts";
 import { featureCss } from "./calligraphy/features";
-import { displayText, fontCss, lineAnchorX, lineOffsets, needsGlyphEngine, objectSize, shapePath, type ProjectDoc, type TextObject } from "./model";
+import { displayText, fontCss, lineAnchorX, lineOffsets, needsGlyphEngine, objectSize, shapePath, type ProjectDoc, type ShapeObject, type TextObject } from "./model";
 import { glyphEngine } from "./glyphs/engine";
 import type { TextLayout } from "./glyphs/layout";
-import { buildScene, objectMatrix, pathToSvg, sceneToSvg, textPaths, matAttr } from "./glyphs/scene";
+import { buildScene, objectMatrix, pathObjectPath, pathToSvg, sceneToSvg, textPaths, matAttr, type ScenePath } from "./glyphs/scene";
 import { sceneToPdf, type PdfBackground, type PdfPage } from "./glyphs/pdf";
 
 type LayoutFor = (o: TextObject) => TextLayout | null;
@@ -30,52 +30,77 @@ export function renderToCanvas(ctx: CanvasRenderingContext2D, doc: ProjectDoc, s
     ctx.save();
     ctx.translate(o.x, o.y);
     ctx.rotate((o.rotation * Math.PI) / 180);
-    ctx.globalAlpha = o.opacity;
-    if (o.type === "shape") {
-      const p = new Path2D(shapePath(o.shape, o.width, o.height, o.cornerRadius));
-      if (o.fill !== "transparent") {
-        ctx.fillStyle = o.fill;
-        ctx.fill(p);
-      }
-      if (o.strokeWidth > 0 && o.stroke !== "transparent") {
-        ctx.strokeStyle = o.stroke;
-        ctx.lineWidth = o.strokeWidth;
-        ctx.lineJoin = "round";
-        ctx.stroke(p);
-      }
+    if (o.type === "text" && !(needsGlyphEngine(o) && layoutFor(o))) {
+      // Live text is a single fill, so plain alpha already matches SVG group opacity.
+      ctx.globalAlpha = o.opacity;
+      drawText(ctx, o);
     } else {
-      const layout = needsGlyphEngine(o) ? layoutFor(o) : null;
-      if (layout) drawGlyphs(ctx, o, layout);
-      else drawText(ctx, o);
+      withOpacityLayer(ctx, o.opacity, (target) => {
+        if (o.type === "text") drawGlyphs(target, o, layoutFor(o)!);
+        else drawScenePath(target, o.type === "path" ? pathObjectPath(o) : shapeScenePath(o));
+      });
     }
     ctx.restore();
   }
   ctx.restore();
 }
 
-function drawGlyphs(ctx: CanvasRenderingContext2D, o: TextObject, layout: TextLayout) {
-  const paths = textPaths(o, layout);
-  const objectOpacity = ctx.globalAlpha;
+const shapeScenePath = (o: ShapeObject): ScenePath => ({
+  d: shapePath(o.shape, o.width, o.height, o.cornerRadius),
+  m: [1, 0, 0, 1, 0, 0],
+  fill: o.fill === "transparent" ? null : o.fill,
+  stroke: o.strokeWidth > 0 && o.stroke !== "transparent" ? o.stroke : null,
+  strokeWidth: o.strokeWidth,
+});
 
-  // Apply object opacity once to the completed glyph layer. Applying it to each
-  // path separately makes overlapping letters/marks darker at low opacity.
-  let target = ctx;
-  let layer: HTMLCanvasElement | null = null;
-  if (objectOpacity < 1) {
-    layer = document.createElement("canvas");
-    layer.width = ctx.canvas.width;
-    layer.height = ctx.canvas.height;
-    const layerContext = layer.getContext("2d");
-    if (!layerContext) throw new Error("Could not create a canvas layer for translucent text.");
-    const transform = ctx.getTransform();
-    layerContext.setTransform(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f);
-    target = layerContext;
+function drawScenePath(ctx: CanvasRenderingContext2D, p: ScenePath) {
+  const path = new Path2D(p.d);
+  if (p.fill) {
+    ctx.fillStyle = p.fill;
+    ctx.fill(path, p.fillRule ?? "nonzero");
   }
+  if (p.stroke && p.strokeWidth > 0) {
+    ctx.strokeStyle = p.stroke;
+    ctx.lineWidth = p.strokeWidth;
+    ctx.lineJoin = p.lineJoin ?? "round";
+    ctx.lineCap = p.lineCap ?? "butt";
+    ctx.stroke(path);
+  }
+}
 
+/**
+ * Draws with object opacity applied once to the finished object, like SVG group
+ * opacity. Applying alpha per fill/stroke would darken overlaps (stroke over
+ * fill, overlapping glyphs and marks).
+ */
+function withOpacityLayer(ctx: CanvasRenderingContext2D, opacity: number, draw: (target: CanvasRenderingContext2D) => void) {
+  if (opacity >= 1) {
+    ctx.globalAlpha = 1;
+    draw(ctx);
+    return;
+  }
+  if (opacity <= 0) return;
+  const layer = document.createElement("canvas");
+  layer.width = ctx.canvas.width;
+  layer.height = ctx.canvas.height;
+  const lc = layer.getContext("2d");
+  if (!lc) throw new Error("Could not create a canvas layer for a translucent object.");
+  const t = ctx.getTransform();
+  lc.setTransform(t.a, t.b, t.c, t.d, t.e, t.f);
+  draw(lc);
+  // Composite in device coordinates so the object transform is not applied twice.
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = opacity;
+  ctx.drawImage(layer, 0, 0);
+  ctx.restore();
+}
+
+function drawGlyphs(target: CanvasRenderingContext2D, o: TextObject, layout: TextLayout) {
   target.fillStyle = o.color;
   target.strokeStyle = o.color;
   target.lineJoin = "round";
-  for (const p of paths) {
+  for (const p of textPaths(o, layout)) {
     target.save();
     target.transform(...p.m);
     const path = new Path2D(p.d);
@@ -85,16 +110,6 @@ function drawGlyphs(ctx: CanvasRenderingContext2D, o: TextObject, layout: TextLa
       target.stroke(path);
     }
     target.restore();
-  }
-
-  if (layer) {
-    // Composite in device coordinates so the current object transform is not
-    // applied a second time. Restore afterwards to preserve caller state.
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalAlpha = objectOpacity;
-    ctx.drawImage(layer, 0, 0);
-    ctx.restore();
   }
 }
 
@@ -168,6 +183,11 @@ export function buildSvg(doc: ProjectDoc, fontCssBlocks: string[] = [], outlined
       parts.push(
         `<path transform="${t}" opacity="${o.opacity}" d="${shapePath(o.shape, o.width, o.height, o.cornerRadius)}" fill="${o.fill === "transparent" ? "none" : esc(o.fill)}" stroke="${o.strokeWidth > 0 ? esc(o.stroke) : "none"}" stroke-width="${o.strokeWidth}" stroke-linejoin="round"/>`,
       );
+      continue;
+    }
+    if (o.type === "path") {
+      // Native, editable vector path; transform kept on a group so the path data stays in local units.
+      parts.push(`<g transform="${t}" opacity="${o.opacity}" data-name="${esc(o.name)}">${pathToSvg(pathObjectPath(o))}</g>`);
       continue;
     }
     const layout = outlined.get(o.id);

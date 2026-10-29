@@ -46,21 +46,42 @@ const shapeSchema = z.object({
   cornerRadius: z.number().min(0),
 });
 
+/** Coordinates must be finite and within a sane range; malformed paths are rejected, never "repaired". */
+const coord = z.number().finite().min(-1e6).max(1e6);
+const vec = z.tuple([coord, coord]);
+export const pathNodeSchema = z.object({ x: coord, y: coord, in: vec, out: vec, type: z.enum(["corner", "smooth", "symmetric"]) });
+const contourSchema = z
+  .object({ nodes: z.array(pathNodeSchema).min(1).max(20000), closed: z.boolean() })
+  .refine((c) => !c.closed || c.nodes.length >= 2, "A closed contour needs at least two nodes.");
+
+// Added in project format v3.
+const pathSchema = z.object({
+  ...base,
+  type: z.literal("path"),
+  contours: z.array(contourSchema).min(1).max(5000),
+  fill: z.string(),
+  stroke: z.string(),
+  strokeWidth: z.number().finite().min(0).max(1000),
+  fillRule: z.enum(["nonzero", "evenodd"]).default("nonzero"),
+  lineCap: z.enum(["butt", "round", "square"]).default("round"),
+  lineJoin: z.enum(["miter", "round", "bevel"]).default("round"),
+});
+
 const projectSchemaRaw = z.object({
   format: z.literal("acs-project"),
-  version: z.union([z.literal(1), z.literal(2)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   id: z.string(),
   name: z.string(),
   width: z.number().positive(),
   height: z.number().positive(),
   background: z.string(),
   transparentBackground: z.boolean(),
-  objects: z.array(z.discriminatedUnion("type", [textSchema, shapeSchema])),
+  objects: z.array(z.discriminatedUnion("type", [textSchema, shapeSchema, pathSchema])),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 
-/** Accepts v1 and v2 projects and migrates them to the current version without dropping data. */
+/** Accepts v1–v3 projects and migrates them to the current version without dropping data. */
 export const projectSchema = projectSchemaRaw.transform((p) => ({ ...p, version: PROJECT_VERSION }) as ProjectDoc);
 
 const fileSchema = z.object({

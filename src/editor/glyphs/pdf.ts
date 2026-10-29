@@ -47,15 +47,19 @@ export function parseColor(c: string | null): [number, number, number] | null {
 const rgb = (c: [number, number, number]) => c.map((v) => fmt(v)).join(" ");
 const cm = (m: Mat) => `${m.map(fmt).join(" ")} cm`;
 
-function pathOps(p: ScenePath): string {
+const CAP = { butt: 0, round: 1, square: 2 } as const;
+const JOIN = { miter: 0, round: 1, bevel: 2 } as const;
+
+export function pathOps(p: ScenePath): string {
   const fill = parseColor(p.fill);
   const stroke = p.stroke && p.strokeWidth > 0 ? parseColor(p.stroke) : null;
   if (!fill && !stroke) return "";
   const parts = ["q", cm(p.m)];
   if (fill) parts.push(`${rgb(fill)} rg`);
-  if (stroke) parts.push(`${rgb(stroke)} RG ${fmt(p.strokeWidth)} w 1 j 4 M`);
+  if (stroke) parts.push(`${rgb(stroke)} RG ${fmt(p.strokeWidth)} w ${JOIN[p.lineJoin ?? "round"]} j ${CAP[p.lineCap ?? "butt"]} J 4 M`);
   parts.push(pathToPdfOps(p.d));
-  parts.push(fill && stroke ? "B" : fill ? "f" : "S");
+  const eo = p.fillRule === "evenodd" ? "*" : "";
+  parts.push(fill && stroke ? `B${eo}` : fill ? `f${eo}` : "S");
   parts.push("Q");
   return parts.join("\n");
 }
