@@ -185,6 +185,11 @@ export function buildSvg(doc: ProjectDoc, fontCssBlocks: string[] = [], outlined
       );
       continue;
     }
+    if (o.type === "path") {
+      // Native, editable vector path; transform kept on a group so the path data stays in local units.
+      parts.push(`<g transform="${t}" opacity="${o.opacity}" data-name="${esc(o.name)}">${pathToSvg(pathObjectPath(o))}</g>`);
+      continue;
+    }
     const layout = outlined.get(o.id);
     if (layout) {
       parts.push(`<g transform="${matAttr(objectMatrix(o))}" opacity="${o.opacity}" role="img" aria-label="${esc(o.text)}">${textPaths(o, layout).map(pathToSvg).join("")}</g>`);
