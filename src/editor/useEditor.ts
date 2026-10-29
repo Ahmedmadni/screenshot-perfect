@@ -55,7 +55,7 @@ export type Tool = "select" | "node" | "pen" | "curvature" | "freehand";
 export const CREATION_TOOLS: Tool[] = ["pen", "curvature", "freehand"];
 
 /** An unfinished path being drawn (document coordinates). Not part of the undo history until finished. */
-export type PathDraft = { kind: "pen"; nodes: PathNode[] } | { kind: "curvature"; pts: CurvePoint[] };
+export type PathDraft = { kind: "pen"; nodes: PathNode[] } | { kind: "curvature"; pts: CurvePoint[] } | { kind: "freehand"; points: [number, number][] };
 
 const touch = (d: ProjectDoc): ProjectDoc => ({ ...d, updatedAt: new Date().toISOString() });
 
