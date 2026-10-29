@@ -3,7 +3,7 @@
 ## Milestone 2 — Advanced calligraphy controls
 
 ### Implemented in source (verification still required)
-- [x] Project format v2 with migration from v1: `src/editor/model.ts`, `src/editor/storage.ts`
+- [x] Project format v3 with migration support for v1/v2 files: `src/editor/model.ts`, `src/editor/storage.ts`
 - [x] HarfBuzz WASM glyph engine with bidi run handling: `src/editor/glyphs/`
 - [x] Tatweel/kashida slots, presets, preview dialog, and separate Unicode-preserving storage
 - [x] OpenType feature discovery from font GSUB/GPOS tables and saved overrides
