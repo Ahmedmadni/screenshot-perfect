@@ -362,8 +362,22 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                       setMarkEdit({ objectId: o.id, at: null });
                     } else begin(e, "move", o);
                   }}
-                  onDoubleClick={() => o.type === "text" && !inMarkMode && onEditText(o.id)}
-                  style={{ cursor: inMarkMode ? "default" : o.locked ? "not-allowed" : "move" }}
+                  onDoubleClick={(e) => {
+                    if (editor.tool === "node" && o.type === "path" && !o.locked) {
+                      e.stopPropagation();
+                      const p = toDoc(e.clientX, e.clientY);
+                      const local = toLocalPoint(o, [p.x, p.y]);
+                      const hit = nearestOnPath(o.contours, local);
+                      if (hit && hit.distance <= 12 / zoom) {
+                        const result = insertNode(o.contours[hit.contour]!, hit.seg, hit.t);
+                        const contours = o.contours.map((ct, ci) => ci === hit.contour ? result.contour : ct);
+                        const updated = normalizePath({ ...o, contours });
+                        editor.setDoc({ ...doc, objects: doc.objects.map((item) => item.id === o.id ? updated : item) });
+                        editor.setNodeSel([[hit.contour, result.index]]);
+                      }
+                    } else if (o.type === "text" && !inMarkMode) onEditText(o.id);
+                  }}
+                  style={{ cursor: inMarkMode ? "default" : o.locked ? "not-allowed" : editor.tool === "node" ? "crosshair" : "move" }}
                   data-object-id={o.id}
                 >
                   <ObjectShape o={o} forceGlyph={inMarkMode} />
