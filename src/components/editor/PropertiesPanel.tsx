@@ -2,6 +2,7 @@ import { AlignCenter, AlignLeft, AlignRight, ArrowDownToLine, ArrowUpToLine, Cop
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { SHAPE_LABELS, uid, type EditorObject, type ShapeKind, type TextAlign } from "@/editor/model";
+import { convertNode, setClosed } from "@/editor/paths/edit";
 import type { Editor } from "@/editor/useEditor";
 import { FontPicker } from "./FontPicker";
 import { CalligraphyPanel } from "./CalligraphyPanel";
@@ -181,6 +182,33 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
               <option value="bevel">Bevel</option>
             </select>
           </Field>
+          {editor.tool === "node" && editor.nodeSel.length === 1 && (() => {
+            const [ci, ni] = editor.nodeSel[0]!;
+            const contour = o.contours[ci];
+            const node = contour?.nodes[ni];
+            if (!contour || !node) return null;
+            const setNodeType = (type: "corner" | "smooth" | "symmetric") => {
+              const contours = o.contours.map((ct, i) => i === ci ? convertNode(ct, ni, type) : ct);
+              up({ contours }, "node-type");
+            };
+            return (
+              <div className="space-y-2 rounded-md border border-input p-2">
+                <div className="text-xs font-medium">Selected node · نقطة محددة</div>
+                <div className="grid grid-cols-3 gap-1">
+                  {(["corner", "smooth", "symmetric"] as const).map((type) => (
+                    <button key={type} data-active={node.type === type} onClick={() => setNodeType(type)} className="rounded border border-input px-1 py-1 text-[10px] capitalize data-[active=true]:bg-primary data-[active=true]:text-primary-foreground">{type}</button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground">Hold Alt while dragging a handle to temporarily move it independently.</p>
+              </div>
+            );
+          })()}
+          <div className="grid grid-cols-2 gap-2">
+            <Button size="sm" variant="outline" onClick={() => up({ contours: o.contours.map((ct, i) => i === (editor.nodeSel[0]?.[0] ?? 0) ? setClosed(ct, !ct.closed) : ct) })}>
+              {o.contours[editor.nodeSel[0]?.[0] ?? 0]?.closed ? "Open contour" : "Close contour"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => editor.setTool("node")}>Edit nodes</Button>
+          </div>
           <p className="text-[11px] text-muted-foreground">Switch to the node tool to reshape anchors and Bézier handles. Double-click a path segment to insert a node.</p>
         </Section>
       )}
