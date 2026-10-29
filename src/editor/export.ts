@@ -54,20 +54,46 @@ export function renderToCanvas(ctx: CanvasRenderingContext2D, doc: ProjectDoc, s
 }
 
 function drawGlyphs(ctx: CanvasRenderingContext2D, o: TextObject, layout: TextLayout) {
-  // Draw into an offscreen layer when translucent so overlapping glyphs don't double up.
   const paths = textPaths(o, layout);
-  ctx.fillStyle = o.color;
-  ctx.strokeStyle = o.color;
-  ctx.lineJoin = "round";
+  const objectOpacity = ctx.globalAlpha;
+
+  // Apply object opacity once to the completed glyph layer. Applying it to each
+  // path separately makes overlapping letters/marks darker at low opacity.
+  let target = ctx;
+  let layer: HTMLCanvasElement | null = null;
+  if (objectOpacity < 1) {
+    layer = document.createElement("canvas");
+    layer.width = ctx.canvas.width;
+    layer.height = ctx.canvas.height;
+    const layerContext = layer.getContext("2d");
+    if (!layerContext) throw new Error("Could not create a canvas layer for translucent text.");
+    const transform = ctx.getTransform();
+    layerContext.setTransform(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f);
+    target = layerContext;
+  }
+
+  target.fillStyle = o.color;
+  target.strokeStyle = o.color;
+  target.lineJoin = "round";
   for (const p of paths) {
-    ctx.save();
-    ctx.transform(...p.m);
+    target.save();
+    target.transform(...p.m);
     const path = new Path2D(p.d);
-    ctx.fill(path);
+    target.fill(path);
     if (p.stroke) {
-      ctx.lineWidth = p.strokeWidth;
-      ctx.stroke(path);
+      target.lineWidth = p.strokeWidth;
+      target.stroke(path);
     }
+    target.restore();
+  }
+
+  if (layer) {
+    // Composite in device coordinates so the current object transform is not
+    // applied a second time. Restore afterwards to preserve caller state.
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = objectOpacity;
+    ctx.drawImage(layer, 0, 0);
     ctx.restore();
   }
 }
