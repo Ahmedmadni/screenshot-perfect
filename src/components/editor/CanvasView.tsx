@@ -324,6 +324,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
           listen();
           return;
         }
+        if (editor.tool === "node") return;
         if (markEdit) return setMarkEdit({ ...markEdit, at: null });
         setSelectedId(null);
       }}
@@ -430,7 +431,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                 }))}
               </g>
             )}
-            {selected && !markObj && <SelectionBox o={selected} hs={hs} zoom={zoom} onHandle={begin} />}
+            {selected && !markObj && editor.tool !== "node" && <SelectionBox o={selected} hs={hs} zoom={zoom} onHandle={begin} />}
             {markObj && markLayout && (
               <MarkOverlay o={markObj} layout={markLayout} selectedAt={markEdit?.at ?? null} zoom={zoom} onPick={beginMark} />
             )}
