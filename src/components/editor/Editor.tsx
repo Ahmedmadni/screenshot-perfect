@@ -192,7 +192,12 @@ export function Editor() {
       else if ((k === "delete" || k === "backspace") && selectedId) { e.preventDefault(); removeObject(selectedId); }
       else if (k === "escape") { if (editor.markEdit) editor.setMarkEdit(null); else editor.setSelectedId(null); }
       else if (k === "enter" && selected?.type === "text") { e.preventDefault(); setEditingId(selected.id); }
-      else if (!mod && k === "t") addText();
+      else if (!mod && k === "v") editor.setTool("select");
+      else if (!mod && k === "n" && selected?.type === "path") editor.setTool("node");
+      else if (!mod && k === "p") editor.setTool("pen");
+      else if (!mod && k === "c") editor.setTool("curvature");
+      else if (!mod && k === "f") editor.setTool("freehand");
+      else if (!mod && k === "t") { editor.setTool("select"); addText(); }
       else if (selected && !selected.locked && k.startsWith("arrow")) {
         e.preventDefault();
         const d = e.shiftKey ? 10 : 1;
