@@ -2,7 +2,7 @@ import { AlignCenter, AlignLeft, AlignRight, ArrowDownToLine, ArrowUpToLine, Cop
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { SHAPE_LABELS, uid, type EditorObject, type ShapeKind, type TextAlign } from "@/editor/model";
-import { convertNode, setClosed } from "@/editor/paths/edit";
+import { convertNode, deleteNodes, normalizePath, setClosed } from "@/editor/paths/edit";
 import type { Editor } from "@/editor/useEditor";
 import { FontPicker } from "./FontPicker";
 import { CalligraphyPanel } from "./CalligraphyPanel";
@@ -200,6 +200,16 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
                   ))}
                 </div>
                 <p className="text-[10px] text-muted-foreground">Hold Alt while dragging a handle to temporarily move it independently.</p>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => {
+                  const nextContour = deleteNodes(contour, [ni]);
+                  const contours = o.contours.flatMap((ct, i) => i !== ci ? [ct] : nextContour ? [nextContour] : []);
+                  if (!contours.length) removeObject(o.id);
+                  else {
+                    const normalized = normalizePath({ ...o, contours });
+                    updateObject(o.id, { contours: normalized.contours, x: normalized.x, y: normalized.y });
+                  }
+                  editor.setNodeSel([]);
+                }}>Remove selected node</Button>
               </div>
             );
           })()}
