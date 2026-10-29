@@ -7,8 +7,8 @@ import type { TextLayout } from "@/editor/glyphs/layout";
 import { useGlyphEngineVersion } from "@/editor/glyphs/useGlyphEngine";
 import type { Editor } from "@/editor/useEditor";
 import { GlyphText } from "./GlyphText";
-import { contoursToD, dist } from "@/editor/paths/geometry";
-import { createPathObject, scaleContours, toLocalVec } from "@/editor/paths/edit";
+import { contoursToD, dist, nearestOnPath } from "@/editor/paths/geometry";
+import { createPathObject, convertNode, insertNode, moveHandle, moveNode, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide } from "@/editor/paths/edit";
 import { curvatureNodes, fitCurve, cubicsToNodes } from "@/editor/paths/fit";
 
 interface Props {
@@ -27,7 +27,9 @@ type Gesture =
   | { mode: "mark"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: TextObject; at: number; ch: string; dx: number; dy: number }
   | { mode: "pan"; sx: number; sy: number; left: number; top: number }
   | { mode: "draft-handle"; start: { x: number; y: number }; index: number; kind: "pen" | "curvature" }
-  | { mode: "freehand"; points: [number, number][] };
+  | { mode: "freehand"; points: [number, number][] }
+  | { mode: "path-node"; id: string; start: { x: number; y: number }; startLocal: [number, number]; base: ProjectDoc; obj: import("@/editor/model").PathObject; contour: number; index: number }
+  | { mode: "path-handle"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: import("@/editor/model").PathObject; contour: number; index: number; side: HandleSide };
 
 /** Layout for objects drawn from glyph outlines; null means "use live browser text". */
 function glyphLayoutFor(o: TextObject, force: boolean): TextLayout | null {
@@ -106,6 +108,22 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       });
       return;
     }
+    if (g.mode === "path-node" || g.mode === "path-handle") {
+      const o = g.obj;
+      const local = toLocalPoint(o, [p.x, p.y]);
+      const contours = o.contours.map((ct, ci) => {
+        if (ci !== g.contour) return ct;
+        return { ...ct, nodes: ct.nodes.map((n, ni) => {
+          if (ni !== g.index) return n;
+          if (g.mode === "path-node") return moveNode(n, [local[0] - g.startLocal[0], local[1] - g.startLocal[1]]);
+          return moveHandle(n, g.side, [local[0] - n.x, local[1] - n.y], e.altKey);
+        }) };
+      });
+      const updated = normalizePath({ ...o, contours });
+      const cur = docRef.current;
+      replaceDoc({ ...cur, objects: cur.objects.map((x) => x.id === o.id ? updated : x) });
+      return;
+    }
     if (g.mode === "freehand") {
       const last = g.points[g.points.length - 1];
       if (!last || Math.hypot(p.x - last[0], p.y - last[1]) >= 1 / zoom) {
@@ -175,7 +193,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       editor.setTool("select");
       return;
     }
-    if (g && g.mode !== "pan" && g.mode !== "draft-handle") commitFrom(g.base);
+    if (g && g.mode !== "pan" && g.mode !== "draft-handle" && g.mode !== "freehand") commitFrom(g.base);
   };
 
   const listen = () => {
@@ -189,6 +207,29 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
     setSelectedId(obj.id);
     if (obj.locked) return;
     gesture.current = { mode, id: obj.id, start: toDoc(e.clientX, e.clientY), base: doc, obj };
+    listen();
+  };
+
+  const beginPathNode = (e: RPointerEvent, o: import("@/editor/model").PathObject, contour: number, index: number) => {
+    e.stopPropagation();
+    if (spaceDown) return startPan(e);
+    if (o.locked) return;
+    const p = toDoc(e.clientX, e.clientY);
+    const local = toLocalPoint(o, [p.x, p.y]);
+    setSelectedId(o.id);
+    editor.setNodeSel([[contour, index]]);
+    gesture.current = { mode: "path-node", id: o.id, start: p, startLocal: local, base: doc, obj: o, contour, index };
+    listen();
+  };
+
+  const beginPathHandle = (e: RPointerEvent, o: import("@/editor/model").PathObject, contour: number, index: number, side: HandleSide) => {
+    e.stopPropagation();
+    if (spaceDown) return startPan(e);
+    if (o.locked) return;
+    const p = toDoc(e.clientX, e.clientY);
+    setSelectedId(o.id);
+    editor.setNodeSel([[contour, index]]);
+    gesture.current = { mode: "path-handle", id: o.id, start: p, base: doc, obj: o, contour, index, side };
     listen();
   };
 
@@ -312,6 +353,10 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                   opacity={inMarkMode ? Math.max(0.35, o.opacity) : o.opacity}
                   onPointerDown={(e) => {
                     if (editor.tool !== "select" && editor.tool !== "node") return;
+                    if (editor.tool === "node") {
+                      if (o.type === "path") setSelectedId(o.id);
+                      return;
+                    }
                     if (inMarkMode) {
                       e.stopPropagation();
                       setMarkEdit({ objectId: o.id, at: null });
@@ -346,6 +391,24 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
             )}
             {showBounds && (
               <rect width={doc.width} height={doc.height} fill="none" stroke="var(--border)" strokeWidth={1 / zoom} pointerEvents="none" />
+            )}
+            {selected?.type === "path" && editor.tool === "node" && (
+              <g transform={`translate(${selected.x} ${selected.y}) rotate(${selected.rotation})`} data-path-nodes="">
+                {selected.contours.map((ct, ci) => ct.nodes.map((n, ni) => {
+                  const chosen = editor.nodeSel.some(([c, i]) => c === ci && i === ni);
+                  const incoming = [n.x + n.in[0], n.y + n.in[1]];
+                  const outgoing = [n.x + n.out[0], n.y + n.out[1]];
+                  const hasIn = Math.hypot(n.in[0], n.in[1]) > 0.01;
+                  const hasOut = Math.hypot(n.out[0], n.out[1]) > 0.01;
+                  return (
+                    <g key={`${ci}:${ni}`}>
+                      {hasIn && <><line x1={n.x} y1={n.y} x2={incoming[0]} y2={incoming[1]} stroke="var(--selection)" strokeWidth={1.2 / zoom} /><circle cx={incoming[0]} cy={incoming[1]} r={3.5 / zoom} fill="var(--card)" stroke="var(--selection)" strokeWidth={1.2 / zoom} style={{ cursor: "crosshair", pointerEvents: "auto" }} onPointerDown={(e) => beginPathHandle(e, selected, ci, ni, "in")} /></>}
+                      {hasOut && <><line x1={n.x} y1={n.y} x2={outgoing[0]} y2={outgoing[1]} stroke="var(--selection)" strokeWidth={1.2 / zoom} /><circle cx={outgoing[0]} cy={outgoing[1]} r={3.5 / zoom} fill="var(--card)" stroke="var(--selection)" strokeWidth={1.2 / zoom} style={{ cursor: "crosshair", pointerEvents: "auto" }} onPointerDown={(e) => beginPathHandle(e, selected, ci, ni, "out")} /></>}
+                      <circle cx={n.x} cy={n.y} r={(chosen ? 5 : 4) / zoom} fill={chosen ? "var(--selection)" : "var(--card)"} stroke="var(--selection)" strokeWidth={1.5 / zoom} style={{ cursor: "move", pointerEvents: "auto" }} onPointerDown={(e) => beginPathNode(e, selected, ci, ni)} />
+                    </g>
+                  );
+                }))}
+              </g>
             )}
             {selected && !markObj && <SelectionBox o={selected} hs={hs} zoom={zoom} onHandle={begin} />}
             {markObj && markLayout && (
