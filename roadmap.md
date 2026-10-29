@@ -11,6 +11,7 @@
 - [x] Editable SVG export with embedded font CSS where available
 - [x] Outline SVG export using shaped glyph paths
 - [x] Vector PDF writer with canvas/A4/A3/Letter page sizing and background options
+- [x] PNG shaped-text opacity compositing fix: translucent glyph paths are rendered to one layer so overlaps do not become darker
 - [x] Unit tests covering kashida, feature toggles, project migration, mark adjustment, bidi ordering, SVG paths, and PDF primitives
 - [x] GitHub Actions CI workflow added for tests, lint, and production build
 
@@ -22,7 +23,7 @@
 - [ ] Open editable SVG in a browser and compare Arabic shaping and diacritics
 - [ ] Open outline SVG in a separate SVG viewer and compare against the canvas
 - [ ] Open PDF in a standard viewer; verify page size, clipping, opacity, and colors
-- [ ] Run GitHub Actions and resolve any failing tests, lint checks, or build errors
+- [ ] Run GitHub Actions and resolve any failing tests, lint checks, or build errors. Current runs fail before the first step starts (`runner_id: 0`, no runner name, no step logs); treat this as runner/workflow infrastructure until evidence shows a source failure.
 - [ ] Run browser acceptance checks for dense Arabic diacritics and mixed Arabic/English/numerals
 - [ ] Verify WOFF2 limitation messaging and system-font fallback
 
