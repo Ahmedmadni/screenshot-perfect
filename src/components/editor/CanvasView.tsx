@@ -306,6 +306,10 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
           const draft = editor.draft;
           if (editor.tool === "pen") {
             const nodes = draft?.kind === "pen" ? draft.nodes : [];
+            if (e.detail > 1 && nodes.length >= 2) {
+              finishDraft(false);
+              return;
+            }
             if (nodes.length >= 3 && dist([nodes[0]!.x, nodes[0]!.y], [p.x, p.y]) <= 12 / zoom) {
               finishDraft(true);
               return;
@@ -315,6 +319,10 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
             gesture.current = { mode: "draft-handle", start: p, index: next.length - 1, kind: "pen" };
           } else {
             const pts = draft?.kind === "curvature" ? draft.pts : [];
+            if (e.detail > 1 && pts.length >= 2) {
+              finishDraft(false);
+              return;
+            }
             if (pts.length >= 3 && dist([pts[0]!.x, pts[0]!.y], [p.x, p.y]) <= 12 / zoom) {
               finishDraft(true);
               return;
