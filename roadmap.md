@@ -24,7 +24,7 @@
 - [ ] Open outline SVG in a separate SVG viewer and compare against the canvas
 - [ ] Open PDF in a standard viewer; verify page size, clipping, opacity, and colors
 - [ ] Run GitHub Actions and resolve any failing tests, lint checks, or build errors. Current runs fail before the first step starts (`runner_id: 0`, no runner name, no step logs); treat this as runner/workflow infrastructure until evidence shows a source failure.
-- [ ] Verify the new Bézier path tests in an executed test run; tests have been added but not yet run in CI.
+- [ ] Verify the new Bézier path tests in an executed test run; tests have been added but not yet run in CI. Latest Actions jobs still terminate with `runner_id: 0`, no runner name, and no steps.
 - [ ] Run browser acceptance checks for pen/curvature/freehand drawing, handle dragging, node insertion, close/open, undo/redo, save/reopen, and PNG/SVG/PDF export
 - [ ] Run browser acceptance checks for dense Arabic diacritics and mixed Arabic/English/numerals
 - [ ] Verify WOFF2 limitation messaging and system-font fallback
@@ -33,7 +33,7 @@
 - [ ] Rulers, guides, snapping, and alignment tools
 - [ ] Grouping and multi-selection
 - [x] Bézier path data model, curve geometry, and SVG path serialization are present in source
-- [x] Pen, curvature, and freehand path creation tools wired into the canvas; anchor/handle editing, node insertion, node type conversion, contour close/open, and path style controls implemented in source (browser verification still required)
+- [x] Pen, curvature, and freehand path creation tools wired into the canvas; anchor/handle editing, node insertion, node type conversion, contour close/open, path style controls, adjustable freehand smoothing, and Escape-to-cancel implemented in source (browser verification still required)
 - [ ] More decorative vector shapes and editable bezier paths beyond the current core tools
 - [ ] Composition presets and reusable calligraphy layouts
 - [ ] Safer project backup/restore and large-project reliability checks
