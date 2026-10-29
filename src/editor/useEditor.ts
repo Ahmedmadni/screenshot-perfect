@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { commit, createHistory, redo, replace, undo, type History } from "./history";
-import type { EditorObject, ProjectDoc } from "./model";
+import type { EditorObject, PathNode, ProjectDoc } from "./model";
+import type { CurvePoint } from "./paths/fit";
+import type { NodeRef } from "./paths/edit";
 
-interface State {
+export interface EditorState {
   h: History<ProjectDoc>;
   lastKey?: string | undefined;
   lastAt: number;
 }
 
-type Action =
+export type EditorAction =
   | { type: "commit"; doc: ProjectDoc; key?: string | undefined }
   | { type: "replace"; doc: ProjectDoc }
   | { type: "commitFrom"; base: ProjectDoc }
@@ -18,8 +20,7 @@ type Action =
 
 const COALESCE_MS = 700;
 
-function reducer(s: State, a: Action): State {
-  const now = Date.now();
+export function editorReducer(s: EditorState, a: EditorAction, now = Date.now()): EditorState {
   switch (a.type) {
     case "commit":
       // Rapid edits of the same field (e.g. dragging a color picker) form one undo step.
@@ -38,11 +39,23 @@ function reducer(s: State, a: Action): State {
   }
 }
 
+const reducer = (s: EditorState, a: EditorAction) => editorReducer(s, a);
+
 /** Diacritic editing mode: which text object, and which mark (original text index) is selected. */
 export interface MarkEdit {
   objectId: string;
   at: number | null;
 }
+
+/**
+ * select: move/rotate/resize objects · node: edit Bézier nodes of the selected path ·
+ * pen / curvature / freehand: create new paths.
+ */
+export type Tool = "select" | "node" | "pen" | "curvature" | "freehand";
+export const CREATION_TOOLS: Tool[] = ["pen", "curvature", "freehand"];
+
+/** An unfinished path being drawn (document coordinates). Not part of the undo history until finished. */
+export type PathDraft = { kind: "pen"; nodes: PathNode[] } | { kind: "curvature"; pts: CurvePoint[] };
 
 const touch = (d: ProjectDoc): ProjectDoc => ({ ...d, updatedAt: new Date().toISOString() });
 
@@ -51,6 +64,11 @@ export function useEditor(initial: ProjectDoc) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [savedDoc, setSavedDoc] = useState<ProjectDoc | null>(null);
   const [markEdit, setMarkEdit] = useState<MarkEdit | null>(null);
+  const [tool, setToolRaw] = useState<Tool>("select");
+  const [nodeSel, setNodeSel] = useState<NodeRef[]>([]);
+  const [draft, setDraft] = useState<PathDraft | null>(null);
+  /** Freehand smoothing tolerance in screen pixels. */
+  const [smoothing, setSmoothing] = useState(3);
   const doc = state.h.present;
 
   // Leaving the object (selection change, deletion, undo past its creation) ends diacritic editing.
@@ -58,6 +76,27 @@ export function useEditor(initial: ProjectDoc) {
   useEffect(() => {
     if (markEdit && (markEdit.objectId !== selectedId || !markObjectAlive)) setMarkEdit(null);
   }, [markEdit, selectedId, markObjectAlive]);
+
+  // Node editing needs a visible, unlocked path; otherwise fall back to the selection tool.
+  const selectedObj = doc.objects.find((o) => o.id === selectedId);
+  const nodeTarget = selectedObj?.type === "path" && !selectedObj.hidden ? selectedObj : null;
+  useEffect(() => {
+    if (tool === "node" && !nodeTarget) setToolRaw("select");
+  }, [tool, nodeTarget]);
+  // Drop node references that no longer exist (after undo, deletion, etc.).
+  useEffect(() => {
+    if (!nodeSel.length) return;
+    const valid = nodeTarget ? nodeSel.filter(([c, i]) => !!nodeTarget.contours[c]?.nodes[i]) : [];
+    if (valid.length !== nodeSel.length) setNodeSel(valid);
+  }, [nodeSel, nodeTarget]);
+  useEffect(() => setNodeSel([]), [selectedId]);
+
+  const setTool = useCallback((t: Tool) => {
+    setToolRaw(t);
+    setDraft(null);
+    setNodeSel([]);
+    setMarkEdit(null);
+  }, []);
 
   const setDoc = useCallback((next: ProjectDoc, key?: string) => dispatch({ type: "commit", doc: touch(next), key }), []);
   const replaceDoc = useCallback((next: ProjectDoc) => dispatch({ type: "replace", doc: next }), []);
@@ -103,6 +142,8 @@ export function useEditor(initial: ProjectDoc) {
     dispatch({ type: "reset", doc: d });
     setSelectedId(null);
     setSavedDoc(saved ? d : null);
+    setToolRaw("select");
+    setDraft(null);
   }, []);
 
   const selected = useMemo(() => doc.objects.find((o) => o.id === selectedId) ?? null, [doc, selectedId]);
@@ -114,6 +155,14 @@ export function useEditor(initial: ProjectDoc) {
     setSelectedId,
     markEdit,
     setMarkEdit,
+    tool,
+    setTool,
+    nodeSel,
+    setNodeSel,
+    draft,
+    setDraft,
+    smoothing,
+    setSmoothing,
     setDoc,
     replaceDoc,
     commitFrom,
