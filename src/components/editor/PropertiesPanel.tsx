@@ -68,6 +68,14 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
   if (!selected) {
     return (
       <div>
+        {editor.tool === "freehand" && (
+          <Section title="Freehand · الرسم الحر">
+            <Field label={`Curve smoothing · ${editor.smoothing.toFixed(1)} px`}>
+              <input type="range" min={0.5} max={12} step={0.5} value={editor.smoothing} onChange={(e) => editor.setSmoothing(Number(e.target.value))} className="w-full accent-primary" />
+            </Field>
+            <p className="text-[11px] text-muted-foreground">Lower values preserve more detail; higher values simplify the stroke.</p>
+          </Section>
+        )}
         <Section title="Canvas · اللوحة">
           <Field label="Project name">
             <input dir="auto" value={doc.name} onChange={(e) => setDoc({ ...doc, name: e.target.value }, "name")} className="h-8 rounded-md border border-input bg-card px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
@@ -99,6 +107,14 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
 
   return (
     <div>
+      {editor.tool === "freehand" && (
+        <Section title="Freehand · الرسم الحر">
+          <Field label={`Curve smoothing · ${editor.smoothing.toFixed(1)} px`}>
+            <input type="range" min={0.5} max={12} step={0.5} value={editor.smoothing} onChange={(e) => editor.setSmoothing(Number(e.target.value))} className="w-full accent-primary" />
+          </Field>
+          <p className="text-[11px] text-muted-foreground">Lower values preserve more detail; higher values simplify the stroke.</p>
+        </Section>
+      )}
       {o.type === "text" && (
         <Section title="Text · النص">
           <button onClick={() => onEditText(o.id)} dir={o.direction} className="block w-full rounded-md border border-input bg-card p-2 text-start text-xl leading-relaxed hover:bg-accent" style={{ fontFamily: `"${o.fontFamily}", serif` }}>
