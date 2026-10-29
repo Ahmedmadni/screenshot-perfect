@@ -3,6 +3,7 @@
  * are stored here, independently of any rendered output.
  */
 import { applyKashida } from "./calligraphy/kashida";
+import { contoursBounds } from "./paths/geometry";
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -74,10 +75,50 @@ export interface ShapeObject extends BaseObject {
   cornerRadius: number;
 }
 
-export type EditorObject = TextObject | ShapeObject;
+/**
+ * Bézier node behaviour: corner = independent handles, smooth = collinear
+ * handles with independent lengths, symmetric = collinear and equal length.
+ */
+export type NodeType = "corner" | "smooth" | "symmetric";
 
-/** Current project format version. v1 files are migrated on load (see storage.ts). */
-export const PROJECT_VERSION = 2;
+/**
+ * One anchor of a cubic Bézier contour, in object-local units (relative to the
+ * object's x/y, before rotation). `in`/`out` are handle offsets relative to the
+ * anchor; [0, 0] means "no handle" (straight segment end).
+ */
+export interface PathNode {
+  x: number;
+  y: number;
+  in: [number, number];
+  out: [number, number];
+  type: NodeType;
+}
+
+export interface Contour {
+  nodes: PathNode[];
+  closed: boolean;
+}
+
+export type FillRule = "nonzero" | "evenodd";
+export type LineCap = "butt" | "round" | "square";
+export type LineJoin = "miter" | "round" | "bevel";
+
+export interface PathObject extends BaseObject {
+  type: "path";
+  /** One or more sub-paths (several when converted from glyph outlines or shapes). */
+  contours: Contour[];
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  fillRule: FillRule;
+  lineCap: LineCap;
+  lineJoin: LineJoin;
+}
+
+export type EditorObject = TextObject | ShapeObject | PathObject;
+
+/** Current project format version. v1/v2 files are migrated on load (see storage.ts). */
+export const PROJECT_VERSION = 3;
 
 export interface ProjectDoc {
   format: "acs-project";
@@ -259,6 +300,14 @@ export function setGlyphSizeProvider(p: GlyphSizeProvider | null) {
 
 export function objectSize(o: EditorObject, forceGlyph = false): { width: number; height: number } {
   if (o.type === "shape") return { width: o.width, height: o.height };
+  if (o.type === "path") {
+    // Paths are kept centred on their origin (see normalizePath), so the box is symmetric.
+    const b = contoursBounds(o.contours);
+    if (!b) return { width: 1, height: 1 };
+    const w = 2 * Math.max(Math.abs(b.minX), Math.abs(b.maxX));
+    const h = 2 * Math.max(Math.abs(b.minY), Math.abs(b.maxY));
+    return { width: Math.max(1, w), height: Math.max(1, h) };
+  }
   if ((forceGlyph || needsGlyphEngine(o)) && glyphSizeProvider) {
     const g = glyphSizeProvider(o);
     if (g) return g;
