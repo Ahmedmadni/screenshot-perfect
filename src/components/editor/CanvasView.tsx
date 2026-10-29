@@ -277,9 +277,18 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!editor.draft || !["pen", "curvature"].includes(editor.tool)) return;
-      if (e.key === "Enter") { e.preventDefault(); finishDraft(false); }
-      else if (e.key === "Escape") { e.preventDefault(); editor.setDraft(null); editor.setTool("select"); }
+      if (!editor.draft || !["pen", "curvature", "freehand"].includes(editor.tool)) return;
+      if (e.key === "Enter" && (editor.tool === "pen" || editor.tool === "curvature")) {
+        e.preventDefault();
+        finishDraft(false);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        gesture.current = null;
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        editor.setDraft(null);
+        editor.setTool("select");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
