@@ -289,7 +289,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
     <div
       ref={scrollRef}
       className="relative h-full w-full overflow-auto bg-surround"
-      style={{ cursor: spaceDown ? "grab" : "default" }}
+      style={{ cursor: spaceDown ? "grab" : editor.tool === "select" ? "default" : "crosshair" }}
       onPointerDown={(e) => {
         if (spaceDown || e.button === 1) return startPan(e);
         if (editor.tool === "pen" || editor.tool === "curvature") {
