@@ -3,6 +3,7 @@ import { createProject } from "../model";
 import { parseProjectFile } from "../storage";
 import { createPathObject, convertNode, insertNode, moveHandle, setClosed } from "../paths/edit";
 import { contourToD, cubicAt, segment, splitCubic } from "../paths/geometry";
+import { curvatureNodes, cubicsToNodes, fitCurve } from "../paths/fit";
 
 const curved = {
   nodes: [
@@ -73,6 +74,23 @@ describe("Bézier path geometry", () => {
     expect(result.stroke).toBe("#123456");
     expect(result.strokeWidth).toBe(7);
     expect(result.contours[0]?.nodes).toHaveLength(2);
+  });
+
+  it("creates smooth curvature nodes through user points", () => {
+    const nodes = curvatureNodes([{ x: 0, y: 0 }, { x: 40, y: 50 }, { x: 100, y: 0 }], false);
+    expect(nodes).toHaveLength(3);
+    expect(nodes[1]?.type).toBe("smooth");
+    expect(nodes[1]?.in.some((v) => Math.abs(v) > 0)).toBe(true);
+    expect(nodes[1]?.out.some((v) => Math.abs(v) > 0)).toBe(true);
+  });
+
+  it("fits freehand samples into editable cubic nodes", () => {
+    const cubics = fitCurve([[0, 0], [10, 15], [20, 25], [30, 15], [40, 0]], 2);
+    const nodes = cubicsToNodes(cubics);
+    expect(cubics.length).toBeGreaterThan(0);
+    expect(nodes.length).toBeGreaterThanOrEqual(2);
+    expect(nodes[0]?.x).toBe(0);
+    expect(nodes[nodes.length - 1]?.x).toBe(40);
   });
 
   it("writes editable cubic SVG path commands", () => {
