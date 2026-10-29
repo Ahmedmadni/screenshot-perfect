@@ -261,8 +261,14 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
     if (draft?.kind === "pen") nodes = draft.nodes;
     else if (draft?.kind === "curvature") nodes = curvatureNodes(draft.pts, closed);
     else if (draft?.kind === "freehand") nodes = cubicsToNodes(fitCurve(draft.points, Math.max(0.5, editor.smoothing / zoom)));
+    const clean: PathNode[] = [];
+    for (const node of nodes) {
+      const previous = clean[clean.length - 1];
+      if (!previous || dist([previous.x, previous.y], [node.x, node.y]) >= 2 / zoom) clean.push(node);
+    }
+    nodes = clean;
+    if (closed && nodes.length > 2 && dist([nodes[0]!.x, nodes[0]!.y], [nodes[nodes.length - 1]!.x, nodes[nodes.length - 1]!.y]) < 8 / zoom) nodes = nodes.slice(0, -1);
     if (nodes.length >= 2) {
-      if (closed && nodes.length > 2 && dist([nodes[0]!.x, nodes[0]!.y], [nodes[nodes.length - 1]!.x, nodes[nodes.length - 1]!.y]) < 8 / zoom) nodes = nodes.slice(0, -1);
       const contour: Contour = { nodes, closed };
       editor.addObject(createPathObject([contour]));
     }
