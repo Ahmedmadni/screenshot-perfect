@@ -3,7 +3,7 @@
  * conversion, insertion/deletion, closing, transforms and normalization.
  */
 import { uid, type Contour, type EditorObject, type NodeType, type PathNode, type PathObject, type ProjectDoc } from "../model";
-import { add, contoursBounds, cubicAt, dist, isStraight, isZero, len, mul, norm, segment, segmentCount, splitCubic, sub, type Vec } from "./geometry";
+import { contoursBounds, cubicAt, dist, isStraight, isZero, len, mul, norm, segment, splitCubic, sub, type Vec } from "./geometry";
 import { fitSingle } from "./fit";
 
 export type HandleSide = "in" | "out";
@@ -98,7 +98,8 @@ export function insertNode(ct: Contour, k: number, t: number): { contour: Contou
 /** Removes one node, refitting the merged segment so the shape stays as close as possible. */
 function deleteOne(ct: Contour, i: number): Contour | null {
   const n = ct.nodes.length;
-  if (n <= 2) return n === 2 && !ct.closed ? null : n <= 1 ? null : { ...ct, nodes: ct.nodes.filter((_, j) => j !== i), closed: false };
+  // A single remaining node cannot draw anything.
+  if (n <= 2) return null;
   const isEnd = !ct.closed && (i === 0 || i === n - 1);
   if (isEnd) {
     const nodes = ct.nodes.filter((_, j) => j !== i);
@@ -111,7 +112,7 @@ function deleteOne(ct: Contour, i: number): Contour | null {
   const ni = (i + 1) % n;
   const prev = ct.nodes[pi]!;
   const next = ct.nodes[ni]!;
-  const s1 = (pi + n) % n;
+  const s1 = pi;
   let pOut: Vec = [0, 0];
   let nIn: Vec = [0, 0];
   if (!(isStraight(ct, s1) && isStraight(ct, i))) {
@@ -243,9 +244,3 @@ export function deleteSelectedNodes(o: PathObject, sel: NodeRef[]): PathObject {
   });
   return normalizePath({ ...o, contours });
 }
-
-export function segmentsOf(ct: Contour) {
-  return Array.from({ length: segmentCount(ct) }, (_, k) => segment(ct, k));
-}
-
-export const addVec = add;

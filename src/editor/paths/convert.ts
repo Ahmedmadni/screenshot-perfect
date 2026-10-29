@@ -7,7 +7,7 @@ import type { Mat } from "../glyphs/scene";
 import { shapePath, type Contour, type PathNode, type PathObject, type ShapeObject, type TextObject } from "../model";
 import type { TextLayout } from "../glyphs/layout";
 import { textPaths } from "../glyphs/scene";
-import { dist, len, sub, type Vec } from "./geometry";
+import { dist, len, type Vec } from "./geometry";
 import { createPathObject } from "./edit";
 
 const apply = (m: Mat, p: Vec): Vec => [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
@@ -95,5 +95,3 @@ function placeLocal(p: PathObject, src: { x: number; y: number; rotation: number
   const oy = p.x * Math.sin(r) + p.y * Math.cos(r);
   return { ...p, x: src.x + ox, y: src.y + oy, rotation: src.rotation, opacity: src.opacity };
 }
-
-export const _test = { sub };
