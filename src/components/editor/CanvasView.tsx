@@ -8,7 +8,7 @@ import { useGlyphEngineVersion } from "@/editor/glyphs/useGlyphEngine";
 import type { Editor } from "@/editor/useEditor";
 import { GlyphText } from "./GlyphText";
 import { contoursToD, dist, nearestOnPath } from "@/editor/paths/geometry";
-import { createPathObject, convertNode, insertNode, moveHandle, moveNode, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide } from "@/editor/paths/edit";
+import { createPathObject, insertNode, moveHandle, moveNode, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide } from "@/editor/paths/edit";
 import { curvatureNodes, fitCurve, cubicsToNodes } from "@/editor/paths/fit";
 
 interface Props {
