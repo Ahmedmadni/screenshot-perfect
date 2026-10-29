@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
-import { displayText, lineAnchorX, lineOffsets, needsGlyphEngine, objectSize, shapePath, svgTextAnchor, type EditorObject, type ProjectDoc, type TextObject } from "@/editor/model";
+import { displayText, lineAnchorX, lineOffsets, needsGlyphEngine, objectSize, shapePath, svgTextAnchor, type Contour, type EditorObject, type PathNode, type ProjectDoc, type TextObject } from "@/editor/model";
 import { featureCss } from "@/editor/calligraphy/features";
 import { getMarkAdjust, setMarkAdjust } from "@/editor/calligraphy/marks";
 import { glyphEngine } from "@/editor/glyphs/engine";
@@ -7,8 +7,9 @@ import type { TextLayout } from "@/editor/glyphs/layout";
 import { useGlyphEngineVersion } from "@/editor/glyphs/useGlyphEngine";
 import type { Editor } from "@/editor/useEditor";
 import { GlyphText } from "./GlyphText";
-import { contoursToD } from "@/editor/paths/geometry";
-import { scaleContours, toLocalVec } from "@/editor/paths/edit";
+import { contoursToD, dist } from "@/editor/paths/geometry";
+import { createPathObject, scaleContours, toLocalVec } from "@/editor/paths/edit";
+import { curvatureNodes, fitCurve, cubicsToNodes } from "@/editor/paths/fit";
 
 interface Props {
   editor: Editor;
@@ -24,7 +25,9 @@ type Gesture =
   | { mode: "move"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: EditorObject }
   | { mode: "resize" | "rotate"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: EditorObject }
   | { mode: "mark"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: TextObject; at: number; ch: string; dx: number; dy: number }
-  | { mode: "pan"; sx: number; sy: number; left: number; top: number };
+  | { mode: "pan"; sx: number; sy: number; left: number; top: number }
+  | { mode: "draft-handle"; start: { x: number; y: number }; index: number; kind: "pen" | "curvature" }
+  | { mode: "freehand"; points: [number, number][] };
 
 /** Layout for objects drawn from glyph outlines; null means "use live browser text". */
 function glyphLayoutFor(o: TextObject, force: boolean): TextLayout | null {
@@ -89,6 +92,28 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       return;
     }
     const p = toDoc(e.clientX, e.clientY);
+    if (g.mode === "draft-handle") {
+      const dx = p.x - g.start.x;
+      const dy = p.y - g.start.y;
+      editor.setDraft((draft) => {
+        if (g.kind === "pen" && draft?.kind === "pen") {
+          return { ...draft, nodes: draft.nodes.map((n, i) => i === g.index ? { ...n, in: [-dx, -dy], out: [dx, dy], type: "smooth" } : n) };
+        }
+        if (g.kind === "curvature" && draft?.kind === "curvature") {
+          return { ...draft, pts: draft.pts.map((pt, i) => i === g.index ? { ...pt, tangent: [dx, dy] } : pt) };
+        }
+        return draft;
+      });
+      return;
+    }
+    if (g.mode === "freehand") {
+      const last = g.points[g.points.length - 1];
+      if (!last || Math.hypot(p.x - last[0], p.y - last[1]) >= 1 / zoom) {
+        g.points.push([p.x, p.y]);
+        editor.setDraft({ kind: "freehand", points: [...g.points] });
+      }
+      return;
+    }
     const cur = docRef.current;
     if (g.mode === "mark") {
       // Doc-space delta → object-local (undo rotation) → em units.
@@ -144,7 +169,13 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
     gesture.current = null;
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
-    if (g && g.mode !== "pan") commitFrom(g.base);
+    if (g?.mode === "freehand") {
+      const nodes = cubicsToNodes(fitCurve(g.points, Math.max(0.5, editor.smoothing / zoom)));
+      if (nodes.length >= 2) editor.addObject(createPathObject([{ nodes, closed: false }]));
+      editor.setTool("select");
+      return;
+    }
+    if (g && g.mode !== "pan" && g.mode !== "draft-handle") commitFrom(g.base);
   };
 
   const listen = () => {
@@ -183,6 +214,30 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
   const hs = 10 / zoom;
   const pad = 80;
 
+  const finishDraft = (closed = false) => {
+    const draft = editor.draft;
+    let nodes: PathNode[] = [];
+    if (draft?.kind === "pen") nodes = draft.nodes;
+    else if (draft?.kind === "curvature") nodes = curvatureNodes(draft.pts, closed);
+    else if (draft?.kind === "freehand") nodes = cubicsToNodes(fitCurve(draft.points, Math.max(0.5, editor.smoothing / zoom)));
+    if (nodes.length >= 2) {
+      if (closed && nodes.length > 2 && dist([nodes[0]!.x, nodes[0]!.y], [nodes[nodes.length - 1]!.x, nodes[nodes.length - 1]!.y]) < 8 / zoom) nodes = nodes.slice(0, -1);
+      const contour: Contour = { nodes, closed };
+      editor.addObject(createPathObject([contour]));
+    }
+    editor.setTool("select");
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!editor.draft || !["pen", "curvature"].includes(editor.tool)) return;
+      if (e.key === "Enter") { e.preventDefault(); finishDraft(false); }
+      else if (e.key === "Escape") { e.preventDefault(); editor.setDraft(null); editor.setTool("select"); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   return (
     <div
       ref={scrollRef}
@@ -190,8 +245,46 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       style={{ cursor: spaceDown ? "grab" : "default" }}
       onPointerDown={(e) => {
         if (spaceDown || e.button === 1) return startPan(e);
+        if (editor.tool === "pen" || editor.tool === "curvature") {
+          const p = toDoc(e.clientX, e.clientY);
+          const draft = editor.draft;
+          if (editor.tool === "pen") {
+            const nodes = draft?.kind === "pen" ? draft.nodes : [];
+            if (nodes.length >= 3 && dist([nodes[0]!.x, nodes[0]!.y], [p.x, p.y]) <= 12 / zoom) {
+              finishDraft(true);
+              return;
+            }
+            const next = [...nodes, { x: p.x, y: p.y, in: [0, 0] as [number, number], out: [0, 0] as [number, number], type: "corner" as const }];
+            editor.setDraft({ kind: "pen", nodes: next });
+            gesture.current = { mode: "draft-handle", start: p, index: next.length - 1, kind: "pen" };
+          } else {
+            const pts = draft?.kind === "curvature" ? draft.pts : [];
+            if (pts.length >= 3 && dist([pts[0]!.x, pts[0]!.y], [p.x, p.y]) <= 12 / zoom) {
+              finishDraft(true);
+              return;
+            }
+            const next = [...pts, { x: p.x, y: p.y }];
+            editor.setDraft({ kind: "curvature", pts: next });
+            gesture.current = { mode: "draft-handle", start: p, index: next.length - 1, kind: "curvature" };
+          }
+          listen();
+          return;
+        }
+        if (editor.tool === "freehand") {
+          const p = toDoc(e.clientX, e.clientY);
+          gesture.current = { mode: "freehand", points: [[p.x, p.y]] };
+          editor.setDraft({ kind: "freehand", points: [[p.x, p.y]] });
+          listen();
+          return;
+        }
         if (markEdit) return setMarkEdit({ ...markEdit, at: null });
         setSelectedId(null);
+      }}
+      onDoubleClick={(e) => {
+        if (editor.tool === "pen" || editor.tool === "curvature") {
+          e.preventDefault();
+          finishDraft(false);
+        }
       }}
     >
       <div className="flex min-h-full min-w-full items-center justify-center" style={{ padding: pad, width: "max-content", height: "max-content" }}>
@@ -218,6 +311,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                   transform={`translate(${o.x} ${o.y}) rotate(${o.rotation})`}
                   opacity={inMarkMode ? Math.max(0.35, o.opacity) : o.opacity}
                   onPointerDown={(e) => {
+                    if (editor.tool !== "select" && editor.tool !== "node") return;
                     if (inMarkMode) {
                       e.stopPropagation();
                       setMarkEdit({ objectId: o.id, at: null });
@@ -231,6 +325,25 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                 </g>
               );
             })}
+            {editor.draft && (
+              <g pointerEvents="none">
+                {editor.draft.kind === "pen" && editor.draft.nodes.length > 0 && (
+                  <>
+                    <path d={contoursToD([{ nodes: editor.draft.nodes, closed: false }])} fill="none" stroke="var(--selection)" strokeWidth={2 / zoom} strokeDasharray={`${5 / zoom} ${3 / zoom}`} />
+                    {editor.draft.nodes.map((n, i) => <circle key={i} cx={n.x} cy={n.y} r={4 / zoom} fill="var(--card)" stroke="var(--selection)" strokeWidth={1.5 / zoom} />)}
+                  </>
+                )}
+                {editor.draft.kind === "curvature" && editor.draft.pts.length > 0 && (
+                  <>
+                    <path d={contoursToD([{ nodes: curvatureNodes(editor.draft.pts, false), closed: false }])} fill="none" stroke="var(--selection)" strokeWidth={2 / zoom} strokeDasharray={`${5 / zoom} ${3 / zoom}`} />
+                    {editor.draft.pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={4 / zoom} fill="var(--card)" stroke="var(--selection)" strokeWidth={1.5 / zoom} />)}
+                  </>
+                )}
+                {editor.draft.kind === "freehand" && editor.draft.points.length > 1 && (
+                  <polyline points={editor.draft.points.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--selection)" strokeWidth={2 / zoom} strokeLinecap="round" strokeLinejoin="round" />
+                )}
+              </g>
+            )}
             {showBounds && (
               <rect width={doc.width} height={doc.height} fill="none" stroke="var(--border)" strokeWidth={1 / zoom} pointerEvents="none" />
             )}
