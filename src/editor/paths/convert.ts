@@ -56,7 +56,7 @@ export function segsToContours(segs: Seg[], m: Mat = [1, 0, 0, 1, 0, 0]): Contou
     if (!cur) open(start);
     const c = cur as unknown as Contour;
     if (s.op === "L") c.nodes.push(node(apply(m, s.p)));
-    else {
+    else if (s.op === "C") {
       const p = apply(m, s.p);
       const prev = c.nodes[c.nodes.length - 1]!;
       const c1 = apply(m, s.c1);

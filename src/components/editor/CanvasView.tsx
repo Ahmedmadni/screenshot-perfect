@@ -7,6 +7,8 @@ import type { TextLayout } from "@/editor/glyphs/layout";
 import { useGlyphEngineVersion } from "@/editor/glyphs/useGlyphEngine";
 import type { Editor } from "@/editor/useEditor";
 import { GlyphText } from "./GlyphText";
+import { contoursToD } from "@/editor/paths/geometry";
+import { scaleContours, toLocalVec } from "@/editor/paths/edit";
 
 interface Props {
   editor: Editor;
@@ -115,6 +117,14 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       const d0 = Math.hypot(g.start.x - o.x, g.start.y - o.y) || 1;
       const d1 = Math.hypot(p.x - o.x, p.y - o.y);
       patch = { fontSize: Math.max(6, Math.round(o.fontSize * (d1 / d0))) };
+    } else if (o.type === "path") {
+      // Scale the Bézier nodes and handles about the path's centre.
+      const size = objectSize(o);
+      const [lx, ly] = toLocalVec(o, [p.x - o.x, p.y - o.y]).map(Math.abs) as [number, number];
+      let sx = size.width > 1 ? lx / (size.width / 2) : 1;
+      let sy = size.height > 1 ? ly / (size.height / 2) : 1;
+      if (e.shiftKey) sx = sy = Math.max(sx, sy);
+      patch = { contours: scaleContours(o.contours, Math.max(0.01, sx), Math.max(0.01, sy)) };
     } else {
       const r = (-o.rotation * Math.PI) / 180;
       const dx = p.x - o.x;
@@ -247,6 +257,26 @@ function ObjectShape({ o, forceGlyph }: { o: EditorObject; forceGlyph: boolean }
           stroke={o.strokeWidth > 0 ? o.stroke : "none"}
           strokeWidth={o.strokeWidth}
           strokeLinejoin="round"
+        />
+      </>
+    );
+  }
+  if (o.type === "path") {
+    const d = contoursToD(o.contours);
+    const filled = o.fill !== "transparent";
+    return (
+      <>
+        {/* Wide invisible hit area so thin open strokes stay easy to pick; filled paths are hit inside too. */}
+        <path d={d} fill={filled ? "transparent" : "none"} stroke="transparent" strokeWidth={Math.max(o.strokeWidth, 12)} pointerEvents={filled ? "visible" : "visibleStroke"} />
+        <path
+          d={d}
+          fill={filled ? o.fill : "none"}
+          fillRule={o.fillRule}
+          stroke={o.strokeWidth > 0 && o.stroke !== "transparent" ? o.stroke : "none"}
+          strokeWidth={o.strokeWidth}
+          strokeLinecap={o.lineCap}
+          strokeLinejoin={o.lineJoin}
+          pointerEvents="none"
         />
       </>
     );

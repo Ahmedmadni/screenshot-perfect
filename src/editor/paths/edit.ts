@@ -238,7 +238,10 @@ export function deleteSelectedNodes(o: PathObject, sel: NodeRef[]): PathObject {
   const contours: Contour[] = [];
   o.contours.forEach((ct, c) => {
     const idx = sel.filter(([sc]) => sc === c).map(([, i]) => i);
-    if (!idx.length) return contours.push(ct);
+    if (!idx.length) {
+      contours.push(ct);
+      return;
+    }
     const r = deleteNodes(ct, idx);
     if (r) contours.push(r);
   });
