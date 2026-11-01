@@ -16,7 +16,7 @@ export function SizeControls({ editor, insertSize, onInsertSize }: { editor: Edi
           <span className="font-semibold">حجم الإدراج</span>
           <span className="tabular-nums text-muted-foreground">{insertSize} px</span>
         </div>
-        <Slider dir="rtl" min={16} max={400} step={2} value={[insertSize]} onValueChange={([n]) => onInsertSize(n)} aria-label="حجم الإدراج" />
+        <Slider dir="rtl" min={16} max={400} step={2} value={[insertSize]} onValueChange={([n]) => n != null && onInsertSize(n)} aria-label="حجم الإدراج" />
       </div>
       {o ? (
         <div>
@@ -33,7 +33,7 @@ export function SizeControls({ editor, insertSize, onInsertSize }: { editor: Edi
               step={1}
               disabled={o.locked}
               value={[size]}
-              onValueChange={([n]) => editor.updateObject(o.id, resizePatch(o, n), "quick-size")}
+              onValueChange={([n]) => n != null && editor.updateObject(o.id, resizePatch(o, n), "quick-size")}
               aria-label="حجم العنصر المحدد"
             />
             <input
