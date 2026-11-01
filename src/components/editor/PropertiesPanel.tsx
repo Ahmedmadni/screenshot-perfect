@@ -123,7 +123,7 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
           <Button variant="outline" size="sm" className="w-full" onClick={() => onEditText(o.id)}><PenLine /> Edit text</Button>
           <Field label="Font family"><FontPicker value={o.fontFamily} preview={o.text} onChange={(f) => up({ fontFamily: f })} /></Field>
           <div className="grid grid-cols-2 gap-2">
-            <Num label="Size" value={o.fontSize} min={4} max={2000} onChange={(n) => up({ fontSize: n }, "fs")} />
+            <Num label="Font size" value={o.fontSize} min={4} max={2000} onChange={(n) => up({ fontSize: n }, "fs")} />
             <Field label="Weight">
               <select value={o.fontWeight} onChange={(e) => up({ fontWeight: +e.target.value as 400 | 700 })} className="h-8 rounded-md border border-input bg-card px-2 text-sm">
                 <option value={400}>Regular</option>
@@ -131,6 +131,22 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
               </select>
             </Field>
           </div>
+          <Section title="Morph · تحكم الحروف">
+            <Field label={`العرض الأفقي · ${Math.round(o.scaleX * 100)}%`}>
+              <input type="range" min={25} max={250} step={1} value={Math.round(o.scaleX * 100)} onChange={(e) => up({ scaleX: Number(e.target.value) / 100 }, "morph-x")} className="w-full accent-primary" />
+            </Field>
+            <Field label={`الارتفاع الرأسي · ${Math.round(o.scaleY * 100)}%`}>
+              <input type="range" min={25} max={250} step={1} value={Math.round(o.scaleY * 100)} onChange={(e) => up({ scaleY: Number(e.target.value) / 100 }, "morph-y")} className="w-full accent-primary" />
+            </Field>
+            <Field label={`سُمك الحروف الإضافي · ${o.strokeWidth.toFixed(1)} px`}>
+              <input type="range" min={0} max={24} step={0.5} value={o.strokeWidth} onChange={(e) => up({ strokeWidth: Number(e.target.value) }, "morph-thickness")} className="w-full accent-primary" />
+            </Field>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] text-muted-foreground">استعادة أبعاد الخط الأصلية</span>
+              <Button size="sm" variant="outline" onClick={() => up({ scaleX: 1, scaleY: 1, strokeWidth: 0 }, "morph-reset")}>Reset morph</Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">تغيّر هذه الأدوات أبعاد النص وسُمك رسمه بشكل مستقل، دون تحويله إلى صورة.</p>
+          </Section>
           <Color label="Color" value={o.color} onChange={(c) => up({ color: c }, "color")} />
           <div className="grid grid-cols-2 gap-2">
             <Field label="Direction">
