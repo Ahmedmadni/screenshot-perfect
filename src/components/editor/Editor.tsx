@@ -344,7 +344,7 @@ export function Editor() {
         <Sheet open={sheet === "left"} onOpenChange={(o) => !o && setSheet(null)}>
           <SheetContent side="left" className="w-72 p-0">
             <SheetHeader className="sr-only"><SheetTitle>Layers and fonts</SheetTitle></SheetHeader>
-            <div className="h-full pt-8"><LeftPanel editor={editor} /></div>
+            <div className="h-full pt-8"><LeftPanel editor={editor} onInsertDecoration={insertDecoration} /></div>
           </SheetContent>
         </Sheet>
         <Sheet open={sheet === "right"} onOpenChange={(o) => !o && setSheet(null)}>
