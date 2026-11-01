@@ -263,3 +263,18 @@ export function convertNodes(contours: Contour[], sel: NodeRef[], type: NodeType
     return [...new Set(indices)].sort((a, b) => a - b).reduce((current, ni) => convertNode(current, ni, type), ct);
   });
 }
+
+
+/** Moves the same side of every selected node, preserving each node's handle constraint. */
+export function moveHandles(contours: Contour[], sel: NodeRef[], side: HandleSide, delta: Vec, independent = false): Contour[] {
+  const selected = new Set(sel.map(([ci, ni]) => `${ci}:${ni}`));
+  return contours.map((ct, ci) => ({
+    ...ct,
+    nodes: ct.nodes.map((node, ni) => {
+      if (!selected.has(`${ci}:${ni}`)) return node;
+      const handle = node[side];
+      if (isZero(handle)) return node;
+      return moveHandle(node, side, [handle[0] + delta[0], handle[1] + delta[1]], independent);
+    }),
+  }));
+}
