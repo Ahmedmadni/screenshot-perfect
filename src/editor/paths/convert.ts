@@ -104,8 +104,12 @@ export function glyphsToPaths(o: TextObject, layout: TextLayout): PathObject[] {
       ]);
       const local = createPathObject(contours, {
         fill: o.color,
-        stroke: g.thickness > 0 || layout.boldStroke > 0 ? o.color : "transparent",
-        strokeWidth: Math.max(g.thickness * o.scaleX, layout.boldStroke),
+        stroke: g.thickness > 0 || layout.boldStroke > 0 || o.strokeWidth > 0 ? o.color : "transparent",
+        strokeWidth: Math.max(
+          layout.boldStroke / Math.max(g.k, 0.0001),
+          o.strokeWidth / Math.max(g.k, 0.0001),
+          g.thickness / Math.max(g.k, 0.0001),
+        ),
         lineJoin: "round",
         fillRule: "nonzero",
         name: `${o.name} · glyph ${g.editAt >= 0 ? g.editAt + 1 : index + 1}`,
