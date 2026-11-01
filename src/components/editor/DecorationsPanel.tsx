@@ -54,7 +54,7 @@ export function DecorationsPanel({ onInsert, footer }: { onInsert: (value: strin
             {items.filter((item)=>group.items.includes(item)).map((item,i)=><button key={group.title+i+item.label} type="button" draggable
               onDragStart={(e)=>startDrag(e,item.value)} onClick={()=>onInsert(item.value)} title={item.label} aria-label={item.label}
               className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-md border border-border bg-card p-1.5 transition hover:border-primary hover:bg-accent active:scale-95">
-              <span dir="rtl" className="max-w-full truncate text-2xl leading-8 text-foreground">{item.value}</span>
+              <span dir="rtl" className="max-w-full truncate text-2xl leading-8 text-foreground" style={{ fontFamily: item.category === "marks" ? "\"Amiri\", serif" : undefined }}>{item.category === "vectors" ? "◈" : item.value}</span>
               <span className="max-w-full truncate text-[9px] text-muted-foreground">{item.label}</span>
             </button>)}
           </div>
