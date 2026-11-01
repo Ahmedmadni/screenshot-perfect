@@ -17,7 +17,7 @@ const groups: { title: string; items: Decoration[] }[] = [
     {value:"❧",label:"غصن نباتي",category:"ornaments"},{value:"※",label:"فاصل هندسي",category:"ornaments"},{value:"⁕",label:"نجمة صغيرة",category:"ornaments"},{value:"◆",label:"ماسة ممتلئة",category:"ornaments"},{value:"◇",label:"ماسة مجوفة",category:"ornaments"},
   ]},
   { title: "زخارف متجهية قابلة للتحرير", items: [
-    {value:"@vector:rosette",label:"وردة هندسية",category:"vectors"},{value:"@vector:star8",label:"نجمة ثمانية",category:"vectors"},{value:"@vector:diamond",label:"معين",category:"vectors"},{value:"@vector:ellipse",label:"إطار دائري",category:"vectors"},{value:"@vector:arch",label:"قوس",category:"vectors"},{value:"@vector:frame",label:"إطار",category:"vectors"},
+    {value:"@vector:rosette",label:"وردة هندسية",category:"vectors"},{value:"@vector:floral",label:"وردة نباتية Bézier",category:"vectors"},{value:"@vector:star8",label:"نجمة ثمانية",category:"vectors"},{value:"@vector:diamond",label:"معين",category:"vectors"},{value:"@vector:ellipse",label:"إطار دائري",category:"vectors"},{value:"@vector:arch",label:"قوس",category:"vectors"},{value:"@vector:frame",label:"إطار",category:"vectors"},
   ]},
   { title: "فواصل وامتدادات", items: [
     {value:"ــــــــــــ",label:"كشيدة طويلة",category:"dividers"},{value:"༺",label:"قوس أيسر",category:"dividers"},{value:"༻",label:"قوس أيمن",category:"dividers"},{value:"༺ ❁ ༻",label:"فاصل مزخرف",category:"dividers"},
