@@ -52,11 +52,13 @@ export interface Scene {
   objects: SceneObject[];
 }
 
-export function objectMatrix(o: { x: number; y: number; rotation: number }): Mat {
+export function objectMatrix(o: { x: number; y: number; rotation: number; scaleX?: number; scaleY?: number }): Mat {
   const r = (o.rotation * Math.PI) / 180;
   const c = Math.cos(r);
   const s = Math.sin(r);
-  return [c, s, -s, c, o.x, o.y];
+  const sx = o.scaleX ?? 1;
+  const sy = o.scaleY ?? 1;
+  return [c * sx, s * sx, -s * sy, c * sy, o.x, o.y];
 }
 
 const color = (c: string) => (c === "transparent" ? null : c);
@@ -68,8 +70,8 @@ export function textPaths(o: TextObject, layout: TextLayout): ScenePath[] {
       d: g.d,
       m: [g.k, 0, 0, -g.k, g.tx, g.ty] as Mat,
       fill: color(o.color),
-      stroke: layout.boldStroke ? color(o.color) : null,
-      strokeWidth: layout.boldStroke ? layout.boldStroke / g.k : 0,
+      stroke: layout.boldStroke || o.strokeWidth > 0 ? color(o.color) : null,
+      strokeWidth: Math.max(layout.boldStroke ? layout.boldStroke / g.k : 0, o.strokeWidth / Math.max(g.k, 0.0001)),
     }));
 }
 
