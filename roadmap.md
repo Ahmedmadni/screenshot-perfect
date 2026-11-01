@@ -89,3 +89,14 @@ A feature marked implemented is present in the source, not automatically browser
 - [x] Insert-size slider for new ornaments and a proportional size control for the selected element
 - [x] Browser-verified at 950×673 and 1280×800: groups open, panel moves/resizes, drag-to-canvas insert, quick resize
 - [ ] Touch devices: drag-to-canvas from the ornaments window (tap to insert works)
+
+
+## Kelk-style text morph controls — November 2026
+- [x] Add independent horizontal glyph width and vertical glyph height controls for text objects
+- [x] Add adjustable outline thickness (weight simulation) while preserving editable text
+- [x] Apply text morph controls consistently to canvas, PNG, outline SVG, and vector PDF scene generation
+- [x] Migrate older projects with neutral morph defaults and add regression tests
+- [x] Confirm the licensed local Kelk Thuluth font asset is present in `public/fonts` and registered in the font picker / HarfBuzz source map
+- [ ] Browser acceptance: compare Kelk Thuluth samples against the reference app, verify width/height/thickness sliders and export parity
+- [ ] Build a dedicated expanded diacritics workspace with grouped mark palettes, quick placement, and per-mark fine adjustment
+- [ ] Add per-glyph morphology parameters (letter-specific stretch/height/tail/dip controls) rather than only whole-text transforms
