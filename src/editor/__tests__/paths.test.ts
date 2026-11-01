@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createProject, createText, type Contour } from "../model";
 import { glyphsToPaths } from "../paths/convert";
 import { parseProjectFile } from "../storage";
-import { createPathObject, convertNode, convertNodes, insertNode, moveHandle, moveNodes, setClosed } from "../paths/edit";
+import { createPathObject, convertNode, convertNodes, insertNode, moveHandle, moveHandles, moveNodes, setClosed } from "../paths/edit";
 import { contourToD, cubicAt, segment, splitCubic } from "../paths/geometry";
 import { curvatureNodes, cubicsToNodes, fitCurve } from "../paths/fit";
 
@@ -118,6 +118,19 @@ describe("Bézier path geometry", () => {
     expect(Math.hypot(...result.in)).toBeCloseTo(Math.hypot(...result.out), 8);
     expect(result.in[0]).toBeCloseTo(-result.out[0], 8);
     expect(result.in[1]).toBeCloseTo(-result.out[1], 8);
+  });
+
+  it("moves matching handles across selected nodes and preserves node constraints", () => {
+    const second: Contour = {
+      nodes: [{ x: 20, y: 30, in: [-10, 0], out: [10, 0], type: "symmetric" }],
+      closed: false,
+    };
+    const result = moveHandles([curved, second], [[0, 0], [1, 0]], "out", [0, 12]);
+    expect(result[0]?.nodes[0]?.out).toEqual([0, 72]);
+    expect(result[0]?.nodes[0]?.in).toEqual([0, -72]);
+    expect(result[1]?.nodes[0]?.out).toEqual([10, 12]);
+    expect(result[1]?.nodes[0]?.in).toEqual([-10, -12]);
+    expect(result[0]?.nodes[1]).toEqual(curved.nodes[1]);
   });
 
   it("keeps smooth handles collinear when a handle moves", () => {
