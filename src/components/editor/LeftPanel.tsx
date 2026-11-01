@@ -1,8 +1,10 @@
 import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Square, Trash2, Type, Unlock, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fontService } from "@/editor/fonts";
+import { createText } from "@/editor/model";
 import type { Editor } from "@/editor/useEditor";
 import { FontUploadButton, useFonts } from "./FontPicker";
+import { DecorationsPanel } from "./DecorationsPanel";
 
 export function LeftPanel({ editor }: { editor: Editor }) {
   const { doc, selectedId, setSelectedId, updateObject, moveLayer, removeObject } = editor;
@@ -10,9 +12,10 @@ export function LeftPanel({ editor }: { editor: Editor }) {
   const layers = [...doc.objects].reverse();
   return (
     <Tabs defaultValue="layers" className="flex h-full flex-col">
-      <TabsList className="m-2 grid grid-cols-2">
+      <TabsList className="m-2 grid grid-cols-3">
         <TabsTrigger value="layers">Layers</TabsTrigger>
         <TabsTrigger value="assets">Fonts</TabsTrigger>
+      <TabsTrigger value="decor">زخارف</TabsTrigger>
       </TabsList>
       <TabsContent value="layers" className="mt-0 flex-1 overflow-y-auto px-2 pb-2">
         {!layers.length && <p className="px-2 py-6 text-center text-xs text-muted-foreground">No objects yet. Add text or a shape from the tool rail.</p>}
@@ -37,6 +40,7 @@ export function LeftPanel({ editor }: { editor: Editor }) {
           ))}
         </ul>
       </TabsContent>
+      <TabsContent value="decor" className="mt-0 min-h-0 flex-1"><DecorationsPanel onInsert={(value) => editor.addObject(createText(editor.doc, { text: value, name: "عنصر زخرفي", fontSize: 76, color: "#a0703a", align: "center", direction: "rtl" }))} /></TabsContent>
       <TabsContent value="assets" className="mt-0 flex-1 space-y-3 overflow-y-auto px-3 pb-3">
         <FontUploadButton />
         {(["bundled", "uploaded", "system"] as const).map((src) => {
