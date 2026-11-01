@@ -19,6 +19,7 @@ interface Props {
   showBounds: boolean;
   fontsVersion: number;
   onEditText: (id: string) => void;
+  onDropDecoration: (value: string, x: number, y: number) => void;
 }
 
 type Gesture =
@@ -37,7 +38,7 @@ function glyphLayoutFor(o: TextObject, force: boolean): TextLayout | null {
   return glyphEngine.layout(o);
 }
 
-export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEditText }: Props) {
+export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEditText, onDropDecoration }: Props) {
   const { doc, selectedId, setSelectedId, replaceDoc, commitFrom, markEdit, setMarkEdit } = editor;
   useGlyphEngineVersion();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -299,6 +300,8 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       ref={scrollRef}
       className="relative h-full w-full overflow-auto bg-surround"
       style={{ cursor: spaceDown ? "grab" : editor.tool === "select" ? "default" : "crosshair" }}
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("application/x-acs-decoration")) e.preventDefault(); }}
+      onDrop={(e) => { const value = e.dataTransfer.getData("application/x-acs-decoration"); if (!value) return; e.preventDefault(); const p = toDoc(e.clientX, e.clientY); onDropDecoration(value, p.x, p.y); }}
       onPointerDown={(e) => {
         if (spaceDown || e.button === 1) return startPan(e);
         if (editor.tool === "pen" || editor.tool === "curvature") {
