@@ -40,3 +40,18 @@
 
 ## Working rule
 A feature marked implemented is present in the source, not automatically browser-verified. Keep implementation and verification status separate, and never mark an acceptance check complete without an actual test result.
+
+
+## Milestone 4 — Interactive diacritics and ornament library
+- [x] Dedicated editor tab for Arabic diacritics, Qur’anic/Islamic symbols, floral/geometric glyph ornaments, and dividers
+- [x] Search field and category filters for the library
+- [x] Click-to-insert and drag-and-drop placement onto the canvas
+- [x] Inserted decorations are independent text layers and inherit the existing object transform, color, opacity, duplicate, delete, save, and export workflows
+- [ ] Browser acceptance: drag from each category, position precisely, resize/rotate, undo/redo, save/reopen, and export PNG/SVG/PDF
+- [ ] Replace/augment Unicode ornament glyphs with purpose-built editable Bézier/SVG ornament packs
+- [ ] Add favorites, custom collections, and touch-friendly drag placement
+
+### Latest CI findings
+- [x] TypeScript check passed on commit `adf6a831fc9b8393aa4a66d43f438db217aca4d8`
+- [x] Identified and corrected a stale migration test expectation: v1 projects correctly migrate to current format v3
+- [ ] Re-run tests, lint, and build after the migration-test and searchable-library changes; latest workflow run is pending job allocation
