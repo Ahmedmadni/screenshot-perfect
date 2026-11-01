@@ -8,7 +8,7 @@ import { useGlyphEngineVersion } from "@/editor/glyphs/useGlyphEngine";
 import type { Editor } from "@/editor/useEditor";
 import { GlyphText } from "./GlyphText";
 import { contoursToD, dist, nearestOnPath } from "@/editor/paths/geometry";
-import { createPathObject, deleteSelectedNodes, insertNode, moveHandle, moveNodes, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide, type NodeRef } from "@/editor/paths/edit";
+import { createPathObject, deleteSelectedNodes, insertNode, moveHandle, moveHandles, moveNodes, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide, type NodeRef } from "@/editor/paths/edit";
 import { curvatureNodes, fitCurve, cubicsToNodes } from "@/editor/paths/fit";
 
 interface Props {
@@ -31,7 +31,7 @@ type Gesture =
   | { mode: "draft-handle"; start: { x: number; y: number }; index: number; kind: "pen" | "curvature" }
   | { mode: "freehand"; points: [number, number][] }
   | { mode: "path-node"; id: string; start: { x: number; y: number }; startLocal: [number, number]; base: ProjectDoc; obj: import("@/editor/model").PathObject; refs: NodeRef[] }
-  | { mode: "path-handle"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: import("@/editor/model").PathObject; contour: number; index: number; side: HandleSide };
+  | { mode: "path-handle"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: import("@/editor/model").PathObject; refs: NodeRef[]; side: HandleSide };
 
 /** Layout for objects drawn from glyph outlines; null means "use live browser text". */
 function glyphLayoutFor(o: TextObject, force: boolean): TextLayout | null {
@@ -115,12 +115,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       const local = toLocalPoint(o, [p.x, p.y]);
       const contours = g.mode === "path-node"
         ? moveNodes(o.contours, g.refs, [local[0] - g.startLocal[0], local[1] - g.startLocal[1]])
-        : o.contours.map((ct, ci) => ci !== g.contour ? ct : ({
-            ...ct,
-            nodes: ct.nodes.map((n, ni) =>
-              ni === g.index ? moveHandle(n, g.side, [local[0] - n.x, local[1] - n.y], e.altKey) : n,
-            ),
-          }));
+        : moveHandles(o.contours, g.refs, g.side, [local[0] - g.startLocal[0], local[1] - g.startLocal[1]], e.altKey);
       const updated = normalizePath({ ...o, contours });
       const cur = docRef.current;
       replaceDoc({ ...cur, objects: cur.objects.map((x) => x.id === o.id ? updated : x) });
@@ -254,8 +249,11 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
     if (o.locked) return;
     const p = toDoc(e.clientX, e.clientY);
     setSelectedId(o.id);
-    editor.setNodeSel([[contour, index]]);
-    gesture.current = { mode: "path-handle", id: o.id, start: p, base: doc, obj: o, contour, index, side };
+    const clicked = editor.nodeSel.some(([ci, ni]) => ci === contour && ni === index);
+    const refs = clicked ? editor.nodeSel : [[contour, index] as NodeRef];
+    if (!clicked) editor.setNodeSel(refs);
+    const local = toLocalPoint(o, [p.x, p.y]);
+    gesture.current = { mode: "path-handle", id: o.id, start: p, startLocal: local, base: doc, obj: o, refs, side };
     listen();
   };
 
