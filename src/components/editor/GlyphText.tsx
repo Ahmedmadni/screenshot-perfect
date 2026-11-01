@@ -1,18 +1,33 @@
 import type { TextLayout } from "@/editor/glyphs/layout";
 import type { TextObject } from "@/editor/model";
 
-/** Draws a text object from glyph-engine outlines (used when features or diacritic edits are active). */
-export function GlyphText({ o, layout }: { o: TextObject; layout: TextLayout }) {
-  const stroke = layout.boldStroke;
+export function GlyphText({ o, layout, selectedGlyph, onGlyphPointerDown }: {
+  o: TextObject;
+  layout: TextLayout;
+  selectedGlyph: { at: number; gid: number } | null;
+  onGlyphPointerDown: (e: React.PointerEvent<SVGPathElement>, o: TextObject, at: number, gid: number) => void;
+}) {
   return (
     <>
       <rect x={-layout.boxWidth / 2} y={-layout.boxHeight / 2} width={layout.boxWidth} height={layout.boxHeight} fill="transparent" />
-      <g fill={o.color} stroke={stroke || o.strokeWidth > 0 ? o.color : undefined} strokeWidth={Math.max(stroke, o.strokeWidth)} strokeLinejoin="round" paintOrder="stroke fill" data-glyph-text="">
-        {layout.glyphs.map((g, i) =>
-          g.d ? (
-            <path key={i} transform={`matrix(${g.k} 0 0 ${-g.k} ${g.tx} ${g.ty})`} d={g.d} strokeWidth={stroke ? stroke / g.k : undefined} />
-          ) : null,
-        )}
+      <g data-glyph-text="">
+        {layout.glyphs.map((item, i) => {
+          if (!item.d) return null;
+          const active = selectedGlyph?.at === item.editAt && selectedGlyph?.gid === item.gid;
+          const matrix = `matrix(${item.k * item.sx} 0 0 ${-item.k * item.sy} ${item.tx} ${item.ty})`;
+          return (
+            <g key={i}>
+              {active && <path transform={matrix} d={item.d} fill="var(--selection)" fillOpacity={0.12} stroke="var(--selection)" strokeWidth={Math.max(1, 1.5 / item.k)} pointerEvents="none" />}
+              <path transform={matrix} d={item.d} fill={o.color}
+                stroke={item.thickness > 0 ? o.color : "none"} strokeWidth={item.thickness > 0 ? item.thickness / item.k : 0}
+                strokeLinejoin="round" paintOrder="stroke fill"
+                pointerEvents={item.editAt >= 0 && !item.mark ? "visiblePainted" : "none"}
+                style={{ cursor: o.locked ? "not-allowed" : "pointer" }}
+                onPointerDown={item.editAt >= 0 && !item.mark ? (event) => onGlyphPointerDown(event, o, item.editAt, item.gid) : undefined}
+                data-glyph-index={i} data-source-index={item.editAt} />
+            </g>
+          );
+        })}
       </g>
     </>
   );
