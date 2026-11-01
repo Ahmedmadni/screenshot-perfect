@@ -22,8 +22,8 @@ export const BUNDLED_SOURCES: Record<string, BundledSource> = {
   "Aref Ruqaa": { regular: "arefruqaa/ArefRuqaa-Regular.ttf", bold: "arefruqaa/ArefRuqaa-Bold.ttf" },
   "Reem Kufi": { regular: "reemkufi/ReemKufi%5Bwght%5D.ttf", variable: true },
   "Noto Kufi Arabic": { regular: "notokufiarabic/NotoKufiArabic%5Bwght%5D.ttf", variable: true },
-  "Noto Sans Arabic": { regular: "notosansarabic/NotoSansArabic%5Bwght%5D.ttf", variable: true },
-  "IBM Plex Sans Arabic": { regular: "ibmplexsansarabic/IBMPlexSansArabic%5Bwght%5D.ttf", variable: true },
+  "Noto Sans Arabic": { regular: "notosansarabic/NotoSansArabic%5Bwdth%2Cwght%5D.ttf", variable: true },
+  "IBM Plex Sans Arabic": { regular: "ibmplexsansarabic/IBMPlexSansArabic-Regular.ttf", bold: "ibmplexsansarabic/IBMPlexSansArabic-Bold.ttf" },
   Rakkas: { regular: "rakkas/Rakkas-Regular.ttf" },
 };
 
