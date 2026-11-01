@@ -144,7 +144,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       const ly = ddx * Math.sin(r) + ddy * Math.cos(r);
       const round = (n: number) => Math.round(n * 1000) / 1000;
       const baseObj = g.base.objects.find((x) => x.id === g.id) as TextObject;
-      const marks = setMarkAdjust(baseObj.marks, g.at, g.ch, { dx: round(g.dx + lx / o.fontSize), dy: round(g.dy + ly / o.fontSize) });
+      const marks = setMarkAdjust(baseObj.marks, g.at, g.ch, { dx: round(g.dx + lx / (o.fontSize * o.scaleX)), dy: round(g.dy + ly / (o.fontSize * o.scaleY)) });
       replaceDoc({ ...cur, objects: cur.objects.map((x) => (x.id === g.id ? { ...(x as TextObject), marks } : x)) });
       return;
     }
