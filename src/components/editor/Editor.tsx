@@ -106,6 +106,22 @@ export function Editor() {
   };
   const addShape = (k: ShapeKind) => addObject(createShape(doc, k));
   const insertDecoration = (value: string, x = doc.width / 2, y = doc.height / 2) => {
+    if (value.startsWith("@vector:")) {
+      const kind = value.slice(8);
+      const size = Math.round(Math.min(doc.width, doc.height) * 0.24);
+      const style = { x, y, fill: "transparent", stroke: "#a0703a", strokeWidth: Math.max(2, size * 0.012) };
+      if (kind === "rosette") {
+        const outer = createShape(doc, "star8", { ...style, name: "وردة هندسية — نجمة", width: size, height: size });
+        const inner = createShape(doc, "ellipse", { ...style, name: "وردة هندسية — دائرة", width: size * 0.58, height: size * 0.58, strokeWidth: Math.max(1.5, size * 0.008) });
+        const core = createShape(doc, "diamond", { ...style, name: "وردة هندسية — قلب", width: size * 0.24, height: size * 0.24, strokeWidth: Math.max(1.5, size * 0.008) });
+        addObject(outer); addObject(inner); addObject(core);
+      } else {
+        const shape = kind === "frame" ? "rect" : kind as ShapeKind;
+        const item = createShape(doc, shape, { ...style, name: ({star8:"نجمة ثمانية",diamond:"معين زخرفي",ellipse:"إطار دائري",arch:"قوس زخرفي",rect:"إطار زخرفي"} as Record<string,string>)[shape] ?? "زخرفة متجهية", width: size, height: kind === "arch" ? size * 1.25 : size, cornerRadius: kind === "frame" ? size * 0.08 : 0 });
+        addObject(item);
+      }
+      return;
+    }
     const item = createText(doc, { name: "عنصر زخرفي", text: value, x, y, fontSize: 76, color: "#a0703a", align: "center", direction: "rtl" });
     addObject(item);
   };
