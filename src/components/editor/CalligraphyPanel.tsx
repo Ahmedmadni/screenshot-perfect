@@ -226,7 +226,7 @@ export function CalligraphyPanel({ editor, o }: { editor: Editor; o: TextObject 
           <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[1fr_250px]">
             <div className="space-y-3">
               <div className="rounded-lg border bg-muted/30 p-4 text-center">
-                <p dir={o.direction} className="text-3xl leading-[2.4]" style={{ fontFamily: \`"\${o.fontFamily}", serif\` }}>{o.text}</p>
+                <p dir={o.direction} className="text-3xl leading-[2.4]" style={{ fontFamily: `"${o.fontFamily}", serif` }}>{o.text}</p>
                 <p className="mt-2 text-[10px] text-muted-foreground">معاينة النص · اختر حركة من القائمة لضبطها</p>
               </div>
               <div className="space-y-2">
@@ -235,9 +235,9 @@ export function CalligraphyPanel({ editor, o }: { editor: Editor; o: TextObject 
                   {(layout?.glyphs.flatMap((g) => g.mark ? [{ at: g.mark.at, ch: g.mark.ch }] : []) ?? []).map((m, i) => {
                     const selected = at === m.at;
                     return (
-                      <button key={\`\${m.at}-\${i}\`} type="button" onClick={() => setMarkEdit({ objectId: o.id, at: m.at })}
+                      <button key={`${m.at}-${i}`} type="button" onClick={() => setMarkEdit({ objectId: o.id, at: m.at })}
                         data-active={selected} className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-md border border-input bg-card p-2 data-[active=true]:border-primary data-[active=true]:bg-primary/10">
-                        <span className="text-2xl" style={{ fontFamily: \`"\${o.fontFamily}", serif\` }}>{\`◌\${m.ch}\`}</span>
+                        <span className="text-2xl" style={{ fontFamily: `"${o.fontFamily}", serif` }}>{`◌${m.ch}`}</span>
                         <span className="text-[9px] text-muted-foreground">{markName(m.ch).split(" · ")[0]}</span>
                         <span className="text-[9px] text-muted-foreground">#{m.at}</span>
                       </button>
@@ -251,7 +251,7 @@ export function CalligraphyPanel({ editor, o }: { editor: Editor; o: TextObject 
               {at !== null && ch ? (
                 <>
                   <div className="rounded-md bg-muted/40 p-3 text-center">
-                    <div className="text-4xl" style={{ fontFamily: \`"\${o.fontFamily}", serif\` }}>{\`◌\${ch}\`}</div>
+                    <div className="text-4xl" style={{ fontFamily: `"${o.fontFamily}", serif` }}>{`◌${ch}`}</div>
                     <div className="mt-1 text-xs">{markName(ch)}</div>
                   </div>
                   <SmallNum label="الإزاحة الأفقية" suffix="px" value={(adj?.dx ?? 0) * o.fontSize} onChange={(n) => setMark({ dx: n / o.fontSize }, "dx")} step={0.5} />
