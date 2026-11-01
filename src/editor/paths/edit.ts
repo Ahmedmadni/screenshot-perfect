@@ -247,3 +247,19 @@ export function deleteSelectedNodes(o: PathObject, sel: NodeRef[]): PathObject {
   });
   return normalizePath({ ...o, contours });
 }
+
+
+/** Applies a node constraint to a selection spanning any number of contours. */
+export function convertNodes(contours: Contour[], sel: NodeRef[], type: NodeType): Contour[] {
+  const grouped = new Map<number, number[]>();
+  for (const [ci, ni] of sel) {
+    const indices = grouped.get(ci) ?? [];
+    indices.push(ni);
+    grouped.set(ci, indices);
+  }
+  return contours.map((ct, ci) => {
+    const indices = grouped.get(ci);
+    if (!indices?.length) return ct;
+    return [...new Set(indices)].sort((a, b) => a - b).reduce((current, ni) => convertNode(current, ni, type), ct);
+  });
+}
