@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Circle, Diamond, Download, FilePlus2, FolderOpen, Layers, Maximize, Minus, MousePointer2, Plus, Redo2, Save, Settings2, SlidersHorizontal, Square, Star, Trash2, Type, Undo2, DoorClosed, Pen, Spline, Pencil, Waypoints,
+  Shapes, ALargeSmall, Sparkles, PenTool,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -25,6 +26,25 @@ import { LeftPanel } from "./LeftPanel";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { TextEditorDialog } from "./TextEditorDialog";
 import { useFonts } from "./FontPicker";
+import { FontsLibrary } from "./FontsLibrary";
+import { FloatingPanel } from "./FloatingPanel";
+import { DecorationsPanel } from "./DecorationsPanel";
+import { SizeControls } from "./SizeControls";
+import type { Tool } from "@/editor/useEditor";
+
+const DRAW_TOOLS: { tool: Exclude<Tool, "select">; label: string; key: string; Icon: typeof Pen }[] = [
+  { tool: "pen", label: "قلم المنحنيات · Pen", key: "P", Icon: Pen },
+  { tool: "curvature", label: "أداة الانحناء · Curvature", key: "C", Icon: Spline },
+  { tool: "freehand", label: "رسم حر · Freehand", key: "F", Icon: Pencil },
+  { tool: "node", label: "تعديل نقاط المسار · Edit nodes", key: "N", Icon: Waypoints },
+];
+const SHAPE_TOOLS: { kind: ShapeKind; label: string; Icon: typeof Square }[] = [
+  { kind: "rect", label: "مستطيل", Icon: Square },
+  { kind: "ellipse", label: "دائرة / بيضاوي", Icon: Circle },
+  { kind: "diamond", label: "معين", Icon: Diamond },
+  { kind: "star8", label: "نجمة ثمانية", Icon: Star },
+  { kind: "arch", label: "قوس", Icon: DoorClosed },
+];
 
 const clampZoom = (z: number) => Math.min(8, Math.max(0.05, z));
 
@@ -43,6 +63,11 @@ function initialDoc() {
   return { doc: d ?? createSampleProject(), saved: !!d };
 }
 
+/** Small corner mark showing that a rail button opens a group of tools. */
+function GroupMark() {
+  return <span aria-hidden className="absolute bottom-1 right-1 size-0 border-b-4 border-l-4 border-b-current border-l-transparent opacity-60" />;
+}
+
 export function Editor() {
   const [init] = useState(initialDoc);
   const editor = useEditor(init.doc);
@@ -58,6 +83,9 @@ export function Editor() {
   const [sheet, setSheet] = useState<"left" | "right" | null>(null);
   const [exporting, setExporting] = useState(false);
   const [pdfOpen, setPdfOpen] = useState(false);
+  const [ornamentsOpen, setOrnamentsOpen] = useState(true);
+  const [insertSize, setInsertSize] = useState(76);
+  const [group, setGroup] = useState<"draw" | "shapes" | "fonts" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const canvasWrap = useRef<HTMLDivElement>(null);
   const fonts = useFonts();
@@ -100,8 +128,8 @@ export function Editor() {
     setLastProject(d.id);
   };
 
-  const addText = () => {
-    const t = createText(doc);
+  const addText = (fontFamily?: string) => {
+    const t = createText(doc, fontFamily ? { fontFamily } : {});
     addObject(t);
     setEditingId(t.id);
   };
@@ -110,10 +138,10 @@ export function Editor() {
     if (value.startsWith("@vector:")) {
       const kind = value.slice(8);
       if (kind === "floral") {
-        addObject(createFloralRosette(x, y, Math.round(Math.min(doc.width, doc.height) * 0.24)));
+        addObject(createFloralRosette(x, y, Math.round(insertSize * 2.5)));
         return;
       }
-      const size = Math.round(Math.min(doc.width, doc.height) * 0.24);
+      const size = Math.round(insertSize * 2.5);
       const style = { x, y, fill: "transparent", stroke: "#a0703a", strokeWidth: Math.max(2, size * 0.012) };
       if (kind === "rosette") {
         const outer = createShape(doc, "star8", { ...style, name: "وردة هندسية — نجمة", width: size, height: size });
@@ -127,7 +155,7 @@ export function Editor() {
       }
       return;
     }
-    const item = createText(doc, { name: "عنصر زخرفي", text: value, x, y, fontSize: 76, color: "#a0703a", align: "center", direction: "rtl" });
+    const item = createText(doc, { name: "عنصر زخرفي", text: value, x, y, fontSize: insertSize, color: "#a0703a", align: "center", direction: "rtl" });
     addObject(item);
   };
 
@@ -223,6 +251,7 @@ export function Editor() {
       else if (!mod && k === "c") editor.setTool("curvature");
       else if (!mod && k === "f") editor.setTool("freehand");
       else if (!mod && k === "t") { editor.setTool("select"); addText(); }
+      else if (!mod && k === "o") setOrnamentsOpen((v) => !v);
       else if (selected && !selected.locked && k.startsWith("arrow")) {
         e.preventDefault();
         const d = e.shiftKey ? 10 : 1;
@@ -244,20 +273,61 @@ export function Editor() {
   const editing = (doc.objects.find((o) => o.id === editingId && o.type === "text") as TextObject | undefined) ?? null;
   const status = saveError ? "Save failed" : isSaved ? "Saved" : "Unsaved changes";
 
+  const activeDraw = DRAW_TOOLS.find((t) => t.tool === editor.tool);
+  const DrawIcon = activeDraw?.Icon ?? PenTool;
   const tools = (
     <div className="flex flex-col items-center gap-1 py-2">
-      <Tip label="Select and transform (V)"><button className="tool-btn" data-active={editor.tool === "select"} onClick={() => editor.setTool("select")} aria-label="Selection tool"><MousePointer2 className="size-4" /></button></Tip>
-      <Tip label="Edit path nodes (N)"><button className="tool-btn" data-active={editor.tool === "node"} disabled={selected?.type !== "path"} onClick={() => editor.setTool("node")} aria-label="Edit path nodes"><Waypoints className="size-4" /></button></Tip>
-      <Tip label="Pen · click points, drag for curves (P)"><button className="tool-btn" data-active={editor.tool === "pen"} onClick={() => editor.setTool("pen")} aria-label="Pen tool"><Pen className="size-4" /></button></Tip>
-      <Tip label="Curvature tool (C)"><button className="tool-btn" data-active={editor.tool === "curvature"} onClick={() => editor.setTool("curvature")} aria-label="Curvature tool"><Spline className="size-4" /></button></Tip>
-      <Tip label="Freehand drawing (F)"><button className="tool-btn" data-active={editor.tool === "freehand"} onClick={() => editor.setTool("freehand")} aria-label="Freehand tool"><Pencil className="size-4" /></button></Tip>
-      <Tip label="Add text (T)"><button className="tool-btn" onClick={() => { editor.setTool("select"); addText(); }} aria-label="Add text"><Type className="size-4" /></button></Tip>
+      <Tip label="تحديد وتحريك · Select (V)"><button className="tool-btn" data-active={editor.tool === "select"} onClick={() => editor.setTool("select")} aria-label="Selection tool"><MousePointer2 className="size-4" /></button></Tip>
+      <Tip label="إضافة نص · Text (T)"><button className="tool-btn" onClick={() => { editor.setTool("select"); addText(); }} aria-label="Add text"><Type className="size-4" /></button></Tip>
       <div className="my-1 h-px w-6 bg-border" />
-      <Tip label="Rectangle"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("rect"); }} aria-label="Add rectangle"><Square className="size-4" /></button></Tip>
-      <Tip label="Ellipse"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("ellipse"); }} aria-label="Add ellipse"><Circle className="size-4" /></button></Tip>
-      <Tip label="Diamond"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("diamond"); }} aria-label="Add diamond"><Diamond className="size-4" /></button></Tip>
-      <Tip label="Eight-point star"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("star8"); }} aria-label="Add eight-point star"><Star className="size-4" /></button></Tip>
-      <Tip label="Arch"><button className="tool-btn" onClick={() => { editor.setTool("select"); addShape("arch"); }} aria-label="Add arch"><DoorClosed className="size-4" /></button></Tip>
+      <Popover open={group === "draw"} onOpenChange={(o) => setGroup(o ? "draw" : null)}>
+        <Tip label="أدوات الرسم">
+          <PopoverTrigger asChild>
+            <button className="tool-btn relative" data-active={!!activeDraw} aria-label="Drawing tools"><DrawIcon className="size-4" /><GroupMark /></button>
+          </PopoverTrigger>
+        </Tip>
+        <PopoverContent side="right" align="start" className="w-60 p-1.5" dir="rtl">
+          <div className="panel-label px-2 py-1">الرسم</div>
+          {DRAW_TOOLS.map(({ tool, label, key, Icon }) => (
+            <button key={tool} disabled={tool === "node" && selected?.type !== "path"} data-active={editor.tool === tool}
+              onClick={() => { editor.setTool(tool); setGroup(null); }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent disabled:opacity-40 data-[active=true]:bg-accent">
+              <Icon className="size-4 text-muted-foreground" /><span className="flex-1 text-start">{label}</span><kbd className="text-[10px] text-muted-foreground">{key}</kbd>
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
+      <Popover open={group === "shapes"} onOpenChange={(o) => setGroup(o ? "shapes" : null)}>
+        <Tip label="الأشكال">
+          <PopoverTrigger asChild>
+            <button className="tool-btn relative" aria-label="Shapes"><Shapes className="size-4" /><GroupMark /></button>
+          </PopoverTrigger>
+        </Tip>
+        <PopoverContent side="right" align="start" className="w-56 p-1.5" dir="rtl">
+          <div className="panel-label px-2 py-1">الأشكال</div>
+          <div className="grid grid-cols-3 gap-1">
+            {SHAPE_TOOLS.map(({ kind, label, Icon }) => (
+              <button key={kind} onClick={() => { editor.setTool("select"); addShape(kind); setGroup(null); }}
+                className="flex flex-col items-center gap-1 rounded-md border border-border p-2 text-[10px] text-muted-foreground hover:border-primary hover:bg-accent hover:text-foreground" aria-label={label}>
+                <Icon className="size-5" />{label}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => { setOrnamentsOpen(true); setGroup(null); }} className="mt-1.5 w-full rounded-md px-2 py-1.5 text-start text-xs text-primary hover:bg-accent">زخارف وأشكال إضافية ←</button>
+        </PopoverContent>
+      </Popover>
+      <div className="my-1 h-px w-6 bg-border" />
+      <Popover open={group === "fonts"} onOpenChange={(o) => setGroup(o ? "fonts" : null)}>
+        <Tip label="الخطوط">
+          <PopoverTrigger asChild>
+            <button className="tool-btn" data-active={group === "fonts"} aria-label="Fonts"><ALargeSmall className="size-4" /></button>
+          </PopoverTrigger>
+        </Tip>
+        <PopoverContent side="right" align="start" className="w-80 p-0">
+          <FontsLibrary editor={editor} onAddText={(family) => { editor.setTool("select"); addText(family); setGroup(null); }} />
+        </PopoverContent>
+      </Popover>
+      <Tip label="التشكيل والزخارف"><button className="tool-btn" data-active={ornamentsOpen} onClick={() => setOrnamentsOpen((v) => !v)} aria-label="Diacritics and ornaments"><Sparkles className="size-4" /></button></Tip>
     </div>
   );
 
@@ -329,7 +399,7 @@ export function Editor() {
 
         <div className="flex min-h-0 flex-1">
           <aside className="w-12 shrink-0 border-e bg-panel">{tools}</aside>
-          <aside className="hidden w-64 shrink-0 border-e bg-panel lg:block"><LeftPanel editor={editor} onInsertDecoration={insertDecoration} /></aside>
+          <aside className="hidden w-56 shrink-0 border-e bg-panel lg:block"><LeftPanel editor={editor} /></aside>
           <main ref={canvasWrap} className="min-w-0 flex-1">
             <CanvasView editor={editor} zoom={zoom} onZoom={setZoom} showChecker={showChecker} showBounds={showBounds} fontsVersion={fontsVersion} onEditText={setEditingId} onDropDecoration={insertDecoration} />
           </main>
@@ -349,7 +419,7 @@ export function Editor() {
         <Sheet open={sheet === "left"} onOpenChange={(o) => !o && setSheet(null)}>
           <SheetContent side="left" className="w-72 p-0">
             <SheetHeader className="sr-only"><SheetTitle>Layers and fonts</SheetTitle></SheetHeader>
-            <div className="h-full pt-8"><LeftPanel editor={editor} onInsertDecoration={insertDecoration} /></div>
+            <div className="h-full pt-8"><LeftPanel editor={editor} /></div>
           </SheetContent>
         </Sheet>
         <Sheet open={sheet === "right"} onOpenChange={(o) => !o && setSheet(null)}>
@@ -368,6 +438,18 @@ export function Editor() {
             setEditingId(null);
           }}
         />
+
+        {ornamentsOpen && (
+          <FloatingPanel
+            storageKey="acs:ui:ornaments"
+            title="التشكيل والزخارف · اسحب العناصر إلى اللوحة"
+            icon={<Sparkles className="size-3.5 text-primary" />}
+            onClose={() => setOrnamentsOpen(false)}
+            initial={() => ({ x: Math.max(8, window.innerWidth - 340 - (window.innerWidth >= 1024 ? 300 : 16)), y: 64, w: 320, h: Math.min(560, window.innerHeight - 120) })}
+          >
+            <DecorationsPanel onInsert={insertDecoration} footer={<SizeControls editor={editor} insertSize={insertSize} onInsertSize={setInsertSize} />} />
+          </FloatingPanel>
+        )}
 
         <PdfExportDialog doc={doc} open={pdfOpen} busy={exporting} onClose={() => setPdfOpen(false)} onExport={doPdf} />
 
