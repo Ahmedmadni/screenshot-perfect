@@ -1,5 +1,5 @@
-import { useMemo, useState, type DragEvent } from "react";
-import { Search, Sparkles, X } from "lucide-react";
+import { useMemo, useState, type DragEvent, type ReactNode } from "react";
+import { Search, X } from "lucide-react";
 
 type Decoration = { value: string; label: string; category: string; hint?: string };
 const groups: { title: string; items: Decoration[] }[] = [
@@ -26,7 +26,7 @@ const groups: { title: string; items: Decoration[] }[] = [
 ];
 const filters = [{id:"all",label:"الكل"},{id:"marks",label:"التشكيل"},{id:"islamic",label:"إسلامي"},{id:"ornaments",label:"زخارف"},{id:"dividers",label:"فواصل"},{id:"vectors",label:"Vector"}];
 
-export function DecorationsPanel({ onInsert }: { onInsert: (value: string) => void }) {
+export function DecorationsPanel({ onInsert, footer }: { onInsert: (value: string) => void; footer?: ReactNode }) {
   const [query,setQuery] = useState("");
   const [filter,setFilter] = useState("all");
   const items = useMemo(() => groups.flatMap((g)=>g.items).filter((item)=>
@@ -36,11 +36,8 @@ export function DecorationsPanel({ onInsert }: { onInsert: (value: string) => vo
     e.dataTransfer.setData("application/x-acs-decoration", value);
     e.dataTransfer.effectAllowed = "copy";
   };
-  return <div className="flex h-full min-h-0 flex-col px-3 pb-3">
-    <div className="mb-3 flex items-center gap-2 pt-2">
-      <Sparkles className="size-4 shrink-0 text-primary" />
-      <div className="min-w-0"><div className="text-sm font-semibold">مكتبة التشكيل والزخارف</div><p className="text-[10px] text-muted-foreground">اسحب إلى اللوحة أو اضغط للإضافة</p></div>
-    </div>
+  return <div className="flex h-full min-h-0 flex-col" dir="rtl">
+    <div className="flex min-h-0 flex-1 flex-col px-3 pt-2">
     <div className="relative mb-2">
       <Search className="absolute right-2.5 top-2.5 size-3.5 text-muted-foreground" />
       <input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="ابحث عن حركة أو زخرفة..." aria-label="البحث في مكتبة الزخارف" className="h-9 w-full rounded-md border border-input bg-card pr-8 pl-8 text-xs outline-none focus:ring-1 focus:ring-ring" />
@@ -53,11 +50,11 @@ export function DecorationsPanel({ onInsert }: { onInsert: (value: string) => vo
       {groups.map((group)=>
         <section key={group.title} className="mb-4">
           {(filter==="all" && !query) && <h3 className="panel-label mb-2">{group.title}</h3>}
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(68px,1fr))] gap-1.5">
             {items.filter((item)=>group.items.includes(item)).map((item,i)=><button key={group.title+i+item.label} type="button" draggable
               onDragStart={(e)=>startDrag(e,item.value)} onClick={()=>onInsert(item.value)} title={item.label} aria-label={item.label}
               className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-md border border-border bg-card p-1.5 transition hover:border-primary hover:bg-accent active:scale-95">
-              <span dir="rtl" className="max-w-full truncate text-2xl leading-8 text-foreground">{item.value}</span>
+              <span dir="rtl" className="max-w-full truncate text-2xl leading-8 text-foreground" style={{ fontFamily: item.category === "marks" ? "\"Amiri\", serif" : undefined }}>{item.category === "vectors" ? "◈" : item.value}</span>
               <span className="max-w-full truncate text-[9px] text-muted-foreground">{item.label}</span>
             </button>)}
           </div>
@@ -65,6 +62,7 @@ export function DecorationsPanel({ onInsert }: { onInsert: (value: string) => vo
       )}
       {items.length===0 && <p className="py-8 text-center text-xs text-muted-foreground">لا توجد نتائج مطابقة. جرّب كلمة بحث أخرى.</p>}
     </div>
-    <div className="mt-2 rounded-md bg-muted/60 p-2 text-[10px] leading-relaxed text-muted-foreground">تُضاف العناصر كطبقات نصية مستقلة. حدّد العنصر لتغيير حجمه ولونه ودورانه وشفافيته، أو لنسخه وحذفه.</div>
+    </div>
+    {footer}
   </div>;
 }

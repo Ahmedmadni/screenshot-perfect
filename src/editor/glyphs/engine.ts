@@ -49,7 +49,7 @@ async function fontBytes(family: string, weight: number): Promise<{ data: ArrayB
       throw new EngineError(`Could not download the original font file for ${family}. Check your connection.`, true);
     }
     if (!res.ok) throw new EngineError(`The font file for ${family} could not be downloaded (HTTP ${res.status}).`, true);
-    return { data: await res.arrayBuffer(), label: `${b.file} · Google Fonts repository`, realBold: b.hasRealBold };
+    return { data: await res.arrayBuffer(), label: `${b.file} · ${b.local ? "bundled with the studio" : "Google Fonts repository"}`, realBold: b.hasRealBold };
   }
   const up = fontService.getUploadedData(family);
   if (up) {

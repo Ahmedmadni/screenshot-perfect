@@ -77,6 +77,15 @@ A feature marked implemented is present in the source, not automatically browser
 - [x] Add Katibeh as a display face with a clearly qualified Thuluth-inspired style label (not marketed as a full traditional Thuluth script)
 - [x] Expand the text editor with grouped Arabic diacritics, Qur'anic marks, hamza/letter forms, Arabic punctuation, tatweel insertion, character count, and remove-diacritics action
 - [x] Explain the supported route for traditional calligraphy fonts: import a properly licensed OTF/TTF/WOFF2 font through the font uploader
-- [ ] Add a verified, redistributable Thuluth font (do not label Naskh/Ruq'ah fonts as Thuluth); verify its shaping, glyph outlines, diacritics, and export
+- [x] Add a redistributable Thuluth font: Kelk Thuluth (OFL, modified from LaylaThuluth 2.0 to remove an empty Allah ligature; renamed per OFL). Browser-verified: loads, applies to text, glyph engine reads its features
+- [ ] Verify Kelk Thuluth in PNG/SVG/PDF exports and with dense diacritics (the font has no GPOS mark positioning)
 - [ ] Add richer text controls: baseline/line spacing presets, paragraph spacing, text stroke/outline, and per-line alignment
 - [ ] Browser-verify all new font loading and HarfBuzz paths, text insertion at cursor/selection, diacritic removal, save/reopen, and PNG/SVG/PDF output
+
+
+## Simplified tool rail — November 2026
+- [x] Tool rail grouped: select, text, drawing tools (pen/curvature/freehand/node edit), shapes, fonts window, ornaments window
+- [x] Diacritics and ornaments library opens as a floating window that can be moved and resized (position remembered); items drag onto the canvas
+- [x] Insert-size slider for new ornaments and a proportional size control for the selected element
+- [x] Browser-verified at 950×673 and 1280×800: groups open, panel moves/resizes, drag-to-canvas insert, quick resize
+- [ ] Touch devices: drag-to-canvas from the ornaments window (tap to insert works)
