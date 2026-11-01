@@ -80,6 +80,13 @@ describe("project compatibility", () => {
     const t = project.objects.find((o) => o.type === "text");
     expect(t && t.type === "text" && [t.kashida, t.features, t.marks]).toEqual([[], {}, []]);
   });
+  it("round-trips individual glyph morph adjustments", () => {
+    const doc = createProject();
+    doc.objects = [createText(doc, { text: "سلام", glyphs: [{ at: 1, gid: 77, dx: 0.12, dy: -0.08, scaleX: 1.4, scaleY: 0.8, thickness: 2 }] })];
+    const { project } = parseProjectFile(JSON.stringify({ project: doc, fonts: [] }));
+    const item = project.objects[0];
+    expect(item?.type === "text" ? item.glyphs : null).toEqual(doc.objects[0]?.type === "text" ? doc.objects[0].glyphs : null);
+  });
   it("round-trips elongation, features and diacritic positions", () => {
     const doc = createProject();
     doc.objects = [createText(doc, { text: "بِسْمِ", kashida: [{ at: 2, count: 3 }], features: { ss01: 1 }, marks: [{ at: 1, ch: "\u0650", dx: 0.1, dy: 0.2, scale: 1.5 }] })];
