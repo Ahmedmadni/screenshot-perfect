@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { commit, createHistory, redo, replace, undo } from "../history";
 import { detectFontFormat, validateFontFile } from "../fonts";
 import { parseProjectFile } from "../storage";
-import { createSampleProject, createText, createProject, objectSize } from "../model";
+import { createSampleProject, createText, createProject } from "../model";
 
 const bytes = (...b: number[]) => new Uint8Array([...b, ...new Array(12).fill(0)]).buffer;
 
@@ -73,7 +73,7 @@ describe("independent text morph controls", () => {
   });
   it("migrates older text objects with neutral morph defaults", () => {
     const doc = createSampleProject();
-    const legacy = { ...doc, version: 3, objects: doc.objects.map((o) => o.type === "text" ? (({ scaleX, scaleY, strokeWidth, ...rest }) => rest)(o) : o) };
+    const legacy = { ...doc, version: 3, objects: doc.objects.map((o) => o.type === "text" ? Object.fromEntries(Object.entries(o).filter(([key]) => !["scaleX", "scaleY", "strokeWidth"].includes(key))) : o) };
     const loaded = parseProjectFile(JSON.stringify(legacy)).project;
     const restored = loaded.objects.find((o) => o.type === "text");
     expect(restored && restored.type === "text" ? [restored.scaleX, restored.scaleY, restored.strokeWidth] : null).toEqual([1, 1, 0]);
