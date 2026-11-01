@@ -18,7 +18,7 @@ describe("Bézier path geometry", () => {
 
   it("converts shaped glyphs into separate editable paths while keeping glyph contours together", () => {
     const doc = createProject();
-    const text = createText(doc, { text: "اب", x: 240, y: 180, scaleX: 1.2, scaleY: 0.8 });
+    const text = createText(doc, { text: "اب", x: 240, y: 180, scaleX: 1.2, scaleY: 0.8, strokeWidth: 2 });
     const layout = {
       glyphs: [
         { gid: 10, src: 0, editAt: 0, d: "M0 0L20 0L20 20Z M5 5L5 10L10 10Z", k: 1, tx: -30, ty: 0, sx: 1, sy: 1, thickness: 0 },
@@ -37,7 +37,19 @@ describe("Bézier path geometry", () => {
     expect(paths[0]?.contours).toHaveLength(2);
     expect(paths[1]?.contours).toHaveLength(1);
     expect(paths[0]?.x).not.toBeCloseTo(paths[1]?.x ?? 0);
-    expect(paths[1]?.strokeWidth).toBeCloseTo(1.2);
+    expect(paths[1]?.strokeWidth).toBeCloseTo(2);
+    expect(paths[1]?.stroke).toBe(text.color);
+    expect(paths[1]?.fillRule).toBe("nonzero");
+  });
+
+
+  it("does not add an outline stroke to regular glyphs without synthetic or requested thickness", () => {
+    const doc = createProject();
+    const text = createText(doc, { text: "ب", x: 100, y: 100 });
+    const layout = { glyphs: [{ gid: 4, src: 0, editAt: 0, d: "M0 0L10 0L10 10Z", k: 2, tx: 0, ty: 0, sx: 1, sy: 1, thickness: 0 }], boxWidth: 10, boxHeight: 10, missing: [], boldStroke: 0, markCount: 0, unmatchedAdjustments: 0 };
+    const [path] = glyphsToPaths(text, layout);
+    expect(path?.stroke).toBe("transparent");
+    expect(path?.strokeWidth).toBe(0);
   });
 
   it("evaluates cubic endpoints and midpoint", () => {
