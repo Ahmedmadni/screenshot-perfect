@@ -100,3 +100,14 @@ A feature marked implemented is present in the source, not automatically browser
 - [ ] Browser acceptance: compare Kelk Thuluth samples against the reference app, verify width/height/thickness sliders and export parity
 - [ ] Build a dedicated expanded diacritics workspace with grouped mark palettes, quick placement, and per-mark fine adjustment
 - [ ] Add per-glyph morphology parameters (letter-specific stretch/height/tail/dip controls) rather than only whole-text transforms
+
+
+## Independent glyph editing — November 2026
+- [x] Add persistent per-glyph transform data keyed by source text index and HarfBuzz glyph ID
+- [x] Expose selectable shaped glyph outlines and individual horizontal/vertical scaling, translation, and thickness
+- [x] Apply glyph transforms in HarfBuzz layout and vector scene exports
+- [x] Upgrade project format to v5 with safe defaults for older documents
+- [ ] Verify PNG, SVG and PDF exports preserve individual glyph edits
+- [ ] Add direct Bézier anchor/control-point editing for a selected glyph outline
+- [ ] Add glyph variant browser and per-letter alternative forms by calligraphy font
+- [ ] Add font-specific independent diacritic catalog and automatic collision-aware placement
