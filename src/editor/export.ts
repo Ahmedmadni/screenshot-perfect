@@ -30,6 +30,7 @@ export function renderToCanvas(ctx: CanvasRenderingContext2D, doc: ProjectDoc, s
     ctx.save();
     ctx.translate(o.x, o.y);
     ctx.rotate((o.rotation * Math.PI) / 180);
+    if (o.type === "text") ctx.scale(o.scaleX, o.scaleY);
     if (o.type === "text" && !(needsGlyphEngine(o) && layoutFor(o))) {
       // Live text is a single fill, so plain alpha already matches SVG group opacity.
       ctx.globalAlpha = o.opacity;
@@ -100,6 +101,7 @@ function drawGlyphs(target: CanvasRenderingContext2D, o: TextObject, layout: Tex
   target.fillStyle = o.color;
   target.strokeStyle = o.color;
   target.lineJoin = "round";
+  target.lineWidth = o.strokeWidth;
   for (const p of textPaths(o, layout)) {
     target.save();
     target.transform(...p.m);
@@ -122,12 +124,13 @@ function drawText(ctx: CanvasRenderingContext2D, o: TextObject) {
   c.letterSpacing = `${o.letterSpacing}px`;
   c.wordSpacing = `${o.wordSpacing}px`;
   ctx.fillStyle = o.color;
+  if (o.strokeWidth > 0) { ctx.strokeStyle = o.color; ctx.lineWidth = o.strokeWidth; }
   const { width } = objectSize(o);
   const ax = lineAnchorX(o, width);
   const offsets = lineOffsets(o);
   displayText(o)
     .split("\n")
-    .forEach((line, i) => ctx.fillText(line, ax, offsets[i] ?? 0));
+    .forEach((line, i) => { if (o.strokeWidth > 0) ctx.strokeText(line, ax, offsets[i] ?? 0); ctx.fillText(line, ax, offsets[i] ?? 0); });
 }
 
 const usedFonts = (doc: ProjectDoc) => [...new Set(doc.objects.flatMap((o) => (o.type === "text" && !o.hidden ? [o.fontFamily] : [])))];
