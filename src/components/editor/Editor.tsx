@@ -19,6 +19,7 @@ import type { PdfBackground, PdfPage } from "@/editor/glyphs/pdf";
 import { PdfExportDialog } from "./PdfExportDialog";
 import { deleteProjectLocal, downloadBlob, lastProjectId, listProjects, loadProjectLocal, parseProjectFile, safeFileName, saveProjectLocal, setLastProject, type ProjectMeta } from "@/editor/storage";
 import { useEditor } from "@/editor/useEditor";
+import { createFloralRosette } from "@/editor/ornaments";
 import { CanvasView } from "./CanvasView";
 import { LeftPanel } from "./LeftPanel";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -108,6 +109,10 @@ export function Editor() {
   const insertDecoration = (value: string, x = doc.width / 2, y = doc.height / 2) => {
     if (value.startsWith("@vector:")) {
       const kind = value.slice(8);
+      if (kind === "floral") {
+        addObject(createFloralRosette(x, y, Math.round(Math.min(doc.width, doc.height) * 0.24)));
+        return;
+      }
       const size = Math.round(Math.min(doc.width, doc.height) * 0.24);
       const style = { x, y, fill: "transparent", stroke: "#a0703a", strokeWidth: Math.max(2, size * 0.012) };
       if (kind === "rosette") {
