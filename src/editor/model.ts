@@ -49,6 +49,11 @@ export interface TextObject extends BaseObject {
   text: string;
   fontFamily: string;
   fontSize: number;
+  /** Independent horizontal and vertical glyph scaling (1 = 100%). */
+  scaleX: number;
+  scaleY: number;
+  /** Additional outline thickness in document units. */
+  strokeWidth: number;
   fontWeight: 400 | 700;
   color: string;
   align: TextAlign;
@@ -118,7 +123,7 @@ export interface PathObject extends BaseObject {
 export type EditorObject = TextObject | ShapeObject | PathObject;
 
 /** Current project format version. v1/v2 files are migrated on load (see storage.ts). */
-export const PROJECT_VERSION = 3;
+export const PROJECT_VERSION = 4;
 
 export interface ProjectDoc {
   format: "acs-project";
@@ -168,6 +173,9 @@ export function createText(doc: ProjectDoc, partial: Partial<TextObject> = {}): 
     text: "خط عربي",
     fontFamily: DEFAULT_FONT,
     fontSize: 96,
+    scaleX: 1,
+    scaleY: 1,
+    strokeWidth: 0,
     fontWeight: 400,
     color: "#1f1a14",
     align: "center",
@@ -310,10 +318,10 @@ export function objectSize(o: EditorObject, forceGlyph = false): { width: number
   }
   if ((forceGlyph || needsGlyphEngine(o)) && glyphSizeProvider) {
     const g = glyphSizeProvider(o);
-    if (g) return g;
+    if (g) return { width: g.width * o.scaleX, height: g.height * o.scaleY };
   }
   const m = measureText(o);
-  return { width: m.width + o.fontSize * 0.2, height: m.height };
+  return { width: (m.width + o.fontSize * 0.2) * o.scaleX, height: m.height * o.scaleY };
 }
 
 /** X offset of a text line anchor within its box, honoring direction-relative alignment. */
