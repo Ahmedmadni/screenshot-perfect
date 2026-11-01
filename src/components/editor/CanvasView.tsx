@@ -25,6 +25,7 @@ interface Props {
 type Gesture =
   | { mode: "move"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: EditorObject }
   | { mode: "resize" | "rotate"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: EditorObject }
+  | { mode: "glyph"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: TextObject; at: number; gid: number; dx: number; dy: number }
   | { mode: "mark"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: TextObject; at: number; ch: string; dx: number; dy: number }
   | { mode: "pan"; sx: number; sy: number; left: number; top: number }
   | { mode: "draft-handle"; start: { x: number; y: number }; index: number; kind: "pen" | "curvature" }
@@ -39,7 +40,7 @@ function glyphLayoutFor(o: TextObject, force: boolean): TextLayout | null {
 }
 
 export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEditText, onDropDecoration }: Props) {
-  const { doc, selectedId, setSelectedId, replaceDoc, commitFrom, markEdit, setMarkEdit } = editor;
+  const { doc, selectedId, setSelectedId, replaceDoc, commitFrom, markEdit, setMarkEdit, glyphEdit, setGlyphEdit } = editor;
   useGlyphEngineVersion();
   const svgRef = useRef<SVGSVGElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -134,6 +135,20 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       return;
     }
     const cur = docRef.current;
+    if (g.mode === "glyph") {
+      const o = g.obj;
+      const r = (-o.rotation * Math.PI) / 180;
+      const ddx = p.x - g.start.x;
+      const ddy = p.y - g.start.y;
+      const lx = ddx * Math.cos(r) - ddy * Math.sin(r);
+      const ly = ddx * Math.sin(r) + ddy * Math.cos(r);
+      const baseObj = g.base.objects.find((x) => x.id === g.id) as TextObject;
+      const prior = baseObj.glyphs.find((x) => x.at === g.at && x.gid === g.gid);
+      const edit = { at: g.at, gid: g.gid, dx: g.dx + lx / (o.fontSize * o.scaleX), dy: g.dy + ly / (o.fontSize * o.scaleY), scaleX: prior?.scaleX ?? 1, scaleY: prior?.scaleY ?? 1, thickness: prior?.thickness ?? 0 };
+      const glyphs = [...baseObj.glyphs.filter((x) => !(x.at === g.at && x.gid === g.gid)), edit];
+      replaceDoc({ ...cur, objects: cur.objects.map((x) => (x.id === g.id ? { ...(x as TextObject), glyphs } : x)) });
+      return;
+    }
     if (g.mode === "mark") {
       // Doc-space delta → object-local (undo rotation) → em units.
       const o = g.obj;
@@ -231,6 +246,18 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
     setSelectedId(o.id);
     editor.setNodeSel([[contour, index]]);
     gesture.current = { mode: "path-handle", id: o.id, start: p, base: doc, obj: o, contour, index, side };
+    listen();
+  };
+
+  const beginGlyph = (e: RPointerEvent, obj: TextObject, at: number, gid: number) => {
+    e.stopPropagation();
+    if (spaceDown) return startPan(e);
+    setSelectedId(obj.id);
+    setGlyphEdit({ objectId: obj.id, at, gid });
+    setMarkEdit(null);
+    if (obj.locked) return;
+    const adj = obj.glyphs.find((x) => x.at === at && x.gid === gid);
+    gesture.current = { mode: "glyph", id: obj.id, start: toDoc(e.clientX, e.clientY), base: doc, obj, at, gid, dx: adj?.dx ?? 0, dy: adj?.dy ?? 0 };
     listen();
   };
 
@@ -407,7 +434,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                   style={{ cursor: inMarkMode ? "default" : o.locked ? "not-allowed" : editor.tool === "node" ? "crosshair" : "move" }}
                   data-object-id={o.id}
                 >
-                  <ObjectShape o={o} forceGlyph={inMarkMode} />
+                  <ObjectShape o={o} forceGlyph={inMarkMode || glyphEdit?.objectId === o.id} selectedGlyph={glyphEdit?.objectId === o.id ? glyphEdit : null} onGlyphPointerDown={beginGlyph} />
                 </g>
               );
             })}
@@ -462,7 +489,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
   );
 }
 
-function ObjectShape({ o, forceGlyph }: { o: EditorObject; forceGlyph: boolean }) {
+function ObjectShape({ o, forceGlyph, selectedGlyph, onGlyphPointerDown }: { o: EditorObject; forceGlyph: boolean; selectedGlyph: { at: number; gid: number } | null; onGlyphPointerDown: (e: RPointerEvent, o: TextObject, at: number, gid: number) => void }) {
   if (o.type === "shape") {
     const { width, height } = o;
     return (
@@ -499,7 +526,7 @@ function ObjectShape({ o, forceGlyph }: { o: EditorObject; forceGlyph: boolean }
     );
   }
   const layout = glyphLayoutFor(o, forceGlyph);
-  if (layout) return <GlyphText o={o} layout={layout} />;
+  if (layout) return <GlyphText o={o} layout={layout} selectedGlyph={selectedGlyph} onGlyphPointerDown={onGlyphPointerDown} />;
   // Live browser text (also the fallback while the glyph engine loads or cannot read the font).
   const { width, height } = objectSize(o);
   const ax = lineAnchorX(o, width);
