@@ -324,7 +324,7 @@ export function Editor() {
 
         <div className="flex min-h-0 flex-1">
           <aside className="w-12 shrink-0 border-e bg-panel">{tools}</aside>
-          <aside className="hidden w-64 shrink-0 border-e bg-panel lg:block"><LeftPanel editor={editor} /></aside>
+          <aside className="hidden w-64 shrink-0 border-e bg-panel lg:block"><LeftPanel editor={editor} onInsertDecoration={insertDecoration} /></aside>
           <main ref={canvasWrap} className="min-w-0 flex-1">
             <CanvasView editor={editor} zoom={zoom} onZoom={setZoom} showChecker={showChecker} showBounds={showBounds} fontsVersion={fontsVersion} onEditText={setEditingId} onDropDecoration={insertDecoration} />
           </main>
