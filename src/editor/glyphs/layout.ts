@@ -194,8 +194,20 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
           }
           const glyphEdit = pg.src >= 0 ? glyphAdjustments.get(`${pg.src}:${gid}`) : undefined;
           if (glyphEdit) {
-            pg.tx += glyphEdit.dx * o.fontSize; pg.ty += glyphEdit.dy * o.fontSize;
-            pg.sx = glyphEdit.scaleX; pg.sy = glyphEdit.scaleY; pg.thickness = glyphEdit.thickness;
+            // Scale around the outline centre rather than the font origin so
+            // resizing a glyph does not make it drift along the baseline.
+            const ext = font.glyphExtents(gid);
+            if (ext) {
+              const cx = ext.xBearing + ext.width / 2;
+              const cy = ext.yBearing + ext.height / 2;
+              pg.tx += k * cx * (1 - glyphEdit.scaleX);
+              pg.ty -= k * cy * (1 - glyphEdit.scaleY);
+            }
+            pg.tx += glyphEdit.dx * o.fontSize;
+            pg.ty += glyphEdit.dy * o.fontSize;
+            pg.sx = glyphEdit.scaleX;
+            pg.sy = glyphEdit.scaleY;
+            pg.thickness = glyphEdit.thickness;
           }
           placed.push(pg);
           pen += g.xAdvance ?? 0;
