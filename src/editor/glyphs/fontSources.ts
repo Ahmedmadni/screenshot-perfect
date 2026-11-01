@@ -13,7 +13,9 @@ export interface BundledSource {
   variable?: boolean;
 }
 
+/** Paths starting with "/" are served from this app's own public folder. */
 export const BUNDLED_SOURCES: Record<string, BundledSource> = {
+  LaylaThuluth: { regular: "/fonts/LaylaThuluth.ttf" },
   Amiri: { regular: "amiri/Amiri-Regular.ttf", bold: "amiri/Amiri-Bold.ttf" },
   "Noto Naskh Arabic": { regular: "notonaskharabic/NotoNaskhArabic%5Bwght%5D.ttf", variable: true },
   "Scheherazade New": { regular: "scheherazadenew/ScheherazadeNew-Regular.ttf", bold: "scheherazadenew/ScheherazadeNew-Bold.ttf" },
@@ -30,15 +32,16 @@ export const BUNDLED_SOURCES: Record<string, BundledSource> = {
   Rakkas: { regular: "rakkas/Rakkas-Regular.ttf" },
 };
 
-export function bundledFontUrl(family: string, weight: number): { url: string; file: string; needsVariation: boolean; hasRealBold: boolean } | null {
+export function bundledFontUrl(family: string, weight: number): { url: string; file: string; needsVariation: boolean; hasRealBold: boolean; local: boolean } | null {
   const s = BUNDLED_SOURCES[family];
   if (!s) return null;
   const bold = weight >= 600;
   const path = bold && s.bold ? s.bold : s.regular;
   return {
-    url: BASE + path,
+    url: path.startsWith("/") ? (typeof location !== "undefined" ? location.origin : "") + path : BASE + path,
     file: decodeURIComponent(path.split("/").pop()!),
     needsVariation: !!s.variable,
     hasRealBold: !!s.bold || !!s.variable,
+    local: path.startsWith("/"),
   };
 }

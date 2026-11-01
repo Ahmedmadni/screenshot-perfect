@@ -105,7 +105,7 @@ export function FontPicker({ value, preview, onChange }: { value: string; previe
           })}
         </div>
         <div className="border-t p-2 space-y-2">
-          <p className="text-[11px] leading-relaxed text-muted-foreground">للخطوط التراثية المتخصصة مثل الثلث والديواني وجلي الديواني، ارفع ملف الخط المرخّص بصيغة OTF أو TTF أو WOFF2. لا نعرض اسم خط غير موجود فعليًا على الجهاز.</p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">خط الثلث متوفر باسم LaylaThuluth. للخطوط الأخرى مثل الديواني وجلي الديواني، ارفع ملف الخط المرخّص بصيغة OTF أو TTF أو WOFF2.</p>
           <FontUploadButton onUploaded={(f) => onChange(f.family)} />
         </div>
       </PopoverContent>

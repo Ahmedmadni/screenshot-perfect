@@ -22,7 +22,12 @@ export interface FontEntry {
   supportsArabic?: boolean;
 }
 
-export const BUNDLED_FONTS: { family: string; style: string }[] = [
+/**
+ * `url` marks a font served from this app's own files (not Google Fonts);
+ * it is registered with the FontFace API at start-up.
+ */
+export const BUNDLED_FONTS: { family: string; style: string; url?: string }[] = [
+  { family: "LaylaThuluth", style: "Thuluth · ثلث", url: "/fonts/LaylaThuluth.ttf" },
   { family: "Amiri", style: "Naskh" },
   { family: "Noto Naskh Arabic", style: "Naskh" },
   { family: "Scheherazade New", style: "Naskh" },
@@ -155,8 +160,13 @@ class FontService {
     this.entries = BUNDLED_FONTS.map((f) => ({ family: f.family, label: f.family, style: f.style, source: "bundled", status: "loading" }));
     this.emit();
     BUNDLED_FONTS.forEach((f) => {
-      document.fonts
-        .load(`40px "${f.family}"`, ARABIC_PROBE)
+      const loading = f.url
+        ? new FontFace(f.family, `url(${f.url})`).load().then((face) => {
+            document.fonts.add(face);
+            return [face];
+          })
+        : document.fonts.load(`40px "${f.family}"`, ARABIC_PROBE);
+      loading
         .then((faces) => {
           const e = this.entries.find((x) => x.family === f.family)!;
           if (faces.length) this.upsert({ ...e, status: "ready", supportsArabic: true });
@@ -245,7 +255,16 @@ class FontService {
       const mime = { woff2: "font/woff2", woff: "font/woff", ttf: "font/ttf", otf: "font/otf" }[up.format];
       return `@font-face{font-family:"${family}";src:url(data:${mime};base64,${toBase64(up.data)});}`;
     }
-    if (!BUNDLED_FONTS.some((b) => b.family === family)) return null;
+    const bundled = BUNDLED_FONTS.find((b) => b.family === family);
+    if (!bundled) return null;
+    if (bundled.url) {
+      try {
+        const buf = await (await fetch(bundled.url)).arrayBuffer();
+        return `@font-face{font-family:"${family}";src:url(data:font/ttf;base64,${toBase64(buf)});}`;
+      } catch {
+        return null;
+      }
+    }
     try {
       const css = await (await fetch(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@400;700`)).text();
       const urls = [...new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map((m) => m[1] as string))];
