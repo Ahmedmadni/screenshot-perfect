@@ -26,8 +26,8 @@ export interface FontEntry {
  * `url` marks a font served from this app's own files (not Google Fonts);
  * it is registered with the FontFace API at start-up.
  */
-export const BUNDLED_FONTS: { family: string; style: string; url?: string }[] = [
-  { family: "LaylaThuluth", style: "Thuluth · ثلث", url: "/fonts/LaylaThuluth.ttf" },
+export const BUNDLED_FONTS: { family: string; style: string; url?: string; label?: string }[] = [
+  { family: "LaylaThuluth", label: "Layla Thuluth · ثلث", style: "Thuluth", url: "/fonts/LaylaThuluth.ttf" },
   { family: "Amiri", style: "Naskh" },
   { family: "Noto Naskh Arabic", style: "Naskh" },
   { family: "Scheherazade New", style: "Naskh" },
@@ -157,7 +157,7 @@ class FontService {
   init() {
     if (this.started || typeof document === "undefined") return;
     this.started = true;
-    this.entries = BUNDLED_FONTS.map((f) => ({ family: f.family, label: f.family, style: f.style, source: "bundled", status: "loading" }));
+    this.entries = BUNDLED_FONTS.map((f) => ({ family: f.family, label: f.label ?? f.family, style: f.style, source: "bundled", status: "loading" }));
     this.emit();
     BUNDLED_FONTS.forEach((f) => {
       const loading = f.url
