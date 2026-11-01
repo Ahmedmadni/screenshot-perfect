@@ -27,7 +27,7 @@ export interface FontEntry {
  * it is registered with the FontFace API at start-up.
  */
 export const BUNDLED_FONTS: { family: string; style: string; url?: string; label?: string }[] = [
-  { family: "LaylaThuluth", label: "Layla Thuluth · ثلث", style: "Thuluth", url: "/fonts/LaylaThuluth.ttf" },
+  { family: "Kelk Thuluth", label: "Kelk Thuluth · ثلث", style: "Thuluth", url: "/fonts/KelkThuluth.ttf" },
   { family: "Amiri", style: "Naskh" },
   { family: "Noto Naskh Arabic", style: "Naskh" },
   { family: "Scheherazade New", style: "Naskh" },

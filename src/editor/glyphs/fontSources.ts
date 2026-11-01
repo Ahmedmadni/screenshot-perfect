@@ -15,7 +15,7 @@ export interface BundledSource {
 
 /** Paths starting with "/" are served from this app's own public folder. */
 export const BUNDLED_SOURCES: Record<string, BundledSource> = {
-  LaylaThuluth: { regular: "/fonts/LaylaThuluth.ttf" },
+  "Kelk Thuluth": { regular: "/fonts/KelkThuluth.ttf" },
   Amiri: { regular: "amiri/Amiri-Regular.ttf", bold: "amiri/Amiri-Bold.ttf" },
   "Noto Naskh Arabic": { regular: "notonaskharabic/NotoNaskhArabic%5Bwght%5D.ttf", variable: true },
   "Scheherazade New": { regular: "scheherazadenew/ScheherazadeNew-Regular.ttf", bold: "scheherazadenew/ScheherazadeNew-Bold.ttf" },

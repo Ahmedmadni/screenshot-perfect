@@ -35,7 +35,7 @@ describe("quick resize", () => {
 describe("Thuluth font", () => {
   it("is bundled with its own font file for the glyph engine", () => {
     const f = BUNDLED_FONTS.find((b) => b.style === "Thuluth");
-    expect(f?.url).toBe("/fonts/LaylaThuluth.ttf");
+    expect(f?.url).toBe("/fonts/KelkThuluth.ttf");
     expect(bundledFontUrl(f!.family, 400)?.local).toBe(true);
   });
 });

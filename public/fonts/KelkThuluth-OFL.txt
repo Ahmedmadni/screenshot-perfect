@@ -1,6 +1,10 @@
-Layla Thuluth (LaylaThuluth.ttf, version 2.0)
-Source: Layla fonts collection by Mohammed Isam, https://sites.google.com/site/mohammedisam2000/layla-fonts-collection-page
-Redistributed unmodified.
+Kelk Thuluth (KelkThuluth.ttf) — a modified version of LaylaThuluth 2.0
+Original: Layla fonts collection by Mohammed Isam, https://sites.google.com/site/mohammedisam2000/layla-fonts-collection-page
+
+Modifications (2026): removed the ligature that replaced the word Allah with an
+empty, zero-width glyph, and removed the U+FDF2 mapping to that empty glyph.
+Because "LaylaThuluth" is a Reserved Font Name, the modified font is renamed
+"Kelk Thuluth" as required by the SIL Open Font License.
 
 Copyright (c) <2014,2015,2016,2017>, <Mohammed Isam> (<http://sites.google.com/site/mohammedisam2000 | email: mohammed_isam1984@yahoo.com>),
 with Reserved Font Name <LaylaArcyArc, LaylaBasicArabic, LaylaBoxer, LaylaDigital, LaylaDiwani, LaylaThuluth, LaylaKoufi, LaylaRuqaa>.
