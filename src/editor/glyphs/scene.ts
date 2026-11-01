@@ -68,10 +68,10 @@ export function textPaths(o: TextObject, layout: TextLayout): ScenePath[] {
     .filter((g) => g.d)
     .map((g) => ({
       d: g.d,
-      m: [g.k, 0, 0, -g.k, g.tx, g.ty] as Mat,
+      m: [g.k * g.sx, 0, 0, -g.k * g.sy, g.tx, g.ty] as Mat,
       fill: color(o.color),
-      stroke: layout.boldStroke || o.strokeWidth > 0 ? color(o.color) : null,
-      strokeWidth: Math.max(layout.boldStroke ? layout.boldStroke / g.k : 0, o.strokeWidth / Math.max(g.k, 0.0001)),
+      stroke: layout.boldStroke || o.strokeWidth > 0 || g.thickness > 0 ? color(o.color) : null,
+      strokeWidth: Math.max(layout.boldStroke ? layout.boldStroke / g.k : 0, o.strokeWidth / Math.max(g.k, 0.0001), g.thickness / Math.max(g.k, 0.0001)),
     }));
 }
 
