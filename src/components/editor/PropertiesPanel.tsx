@@ -68,7 +68,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEditText: (id: string) => void }) {
   const { doc, selected, setDoc, updateObject, moveLayer, removeObject, addObject } = editor;
-  const glyphStatus = useEngineStatus(selected?.type === "text" ? selected.fontFamily : "", selected?.type === "text" ? selected.fontWeight : 400);
+  const glyphStatus = useEngineStatus(selected?.type === "text" ? selected.fontFamily : "Amiri", selected?.type === "text" ? selected.fontWeight : 400);
 
   if (!selected) {
     return (
@@ -130,6 +130,7 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
             if (glyphStatus.state !== "ready") return;
             try {
               const layout = glyphEngine.layout(o);
+              if (!layout) { toast.error("محرك الخط لم يجهز بعد."); return; }
               const paths = glyphsToPaths(o, layout);
               if (!paths.length) { toast.error("لم يتم العثور على مسارات حروف قابلة للتحويل لهذا الخط."); return; }
               editor.setDoc({ ...doc, objects: [...doc.objects, ...paths] });
