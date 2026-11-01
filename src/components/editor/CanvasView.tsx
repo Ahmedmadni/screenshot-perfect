@@ -8,7 +8,7 @@ import { useGlyphEngineVersion } from "@/editor/glyphs/useGlyphEngine";
 import type { Editor } from "@/editor/useEditor";
 import { GlyphText } from "./GlyphText";
 import { contoursToD, dist, nearestOnPath } from "@/editor/paths/geometry";
-import { createPathObject, insertNode, moveHandle, moveNodes, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide, type NodeRef } from "@/editor/paths/edit";
+import { createPathObject, deleteSelectedNodes, insertNode, moveHandle, moveNodes, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide, type NodeRef } from "@/editor/paths/edit";
 import { curvatureNodes, fitCurve, cubicsToNodes } from "@/editor/paths/fit";
 
 interface Props {
@@ -315,6 +315,20 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], [role='textbox']")) return;
+      if ((e.key === "Delete" || e.key === "Backspace") && editor.tool === "node" && editor.nodeSel.length) {
+        const active = editor.doc.objects.find((o) => o.id === editor.selectedId);
+        if (active?.type === "path" && !active.locked) {
+          e.preventDefault();
+          e.stopPropagation();
+          const updated = deleteSelectedNodes(active, editor.nodeSel);
+          if (!updated.contours.length) editor.removeObject(active.id);
+          else editor.setDoc({ ...editor.doc, objects: editor.doc.objects.map((o) => o.id === active.id ? updated : o) });
+          editor.setNodeSel([]);
+        }
+        return;
+      }
       if (!editor.draft || !["pen", "curvature", "freehand"].includes(editor.tool)) return;
       if (e.key === "Enter" && (editor.tool === "pen" || editor.tool === "curvature")) {
         e.preventDefault();
