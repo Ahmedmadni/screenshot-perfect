@@ -73,7 +73,8 @@ A feature marked implemented is present in the source, not automatically browser
 
 
 ## Text composition and professional Arabic typography — November 2026
-- [x] Expand the bundled Arabic font set with Noto Sans Arabic and IBM Plex Sans Arabic; add their verified TrueType sources to the HarfBuzz outline engine
+- [x] Expand the bundled Arabic font set with Noto Sans Arabic, IBM Plex Sans Arabic, Harmattan, Cairo, and Katibeh; add their verified TrueType sources to the HarfBuzz outline engine
+- [x] Add Katibeh as a display face with a clearly qualified Thuluth-inspired style label (not marketed as a full traditional Thuluth script)
 - [x] Expand the text editor with grouped Arabic diacritics, Qur'anic marks, hamza/letter forms, Arabic punctuation, tatweel insertion, character count, and remove-diacritics action
 - [x] Explain the supported route for traditional calligraphy fonts: import a properly licensed OTF/TTF/WOFF2 font through the font uploader
 - [ ] Add a verified, redistributable Thuluth font (do not label Naskh/Ruq'ah fonts as Thuluth); verify its shaping, glyph outlines, diacritics, and export
