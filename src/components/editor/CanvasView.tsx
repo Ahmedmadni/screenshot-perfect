@@ -376,7 +376,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
               return (
                 <g
                   key={o.id}
-                  transform={`translate(${o.x} ${o.y}) rotate(${o.rotation})`}
+                  transform={`translate(${o.x} ${o.y}) rotate(${o.rotation})${o.type === "text" ? ` scale(${o.scaleX} ${o.scaleY})` : ""}`}
                   opacity={inMarkMode ? Math.max(0.35, o.opacity) : o.opacity}
                   onPointerDown={(e) => {
                     if (editor.tool !== "select" && editor.tool !== "node") return;
@@ -512,6 +512,10 @@ function ObjectShape({ o, forceGlyph }: { o: EditorObject; forceGlyph: boolean }
         textAnchor={svgTextAnchor(o)}
         dominantBaseline="central"
         fill={o.color}
+        stroke={o.strokeWidth > 0 ? o.color : "none"}
+        strokeWidth={o.strokeWidth}
+        strokeLinejoin="round"
+        paintOrder="stroke fill"
         style={{
           fontFamily: `"${o.fontFamily}", serif`,
           fontSize: o.fontSize,
@@ -553,7 +557,7 @@ function MarkOverlay({
   const min = 14 / zoom;
   const sw = 1.25 / zoom;
   return (
-    <g transform={`translate(${o.x} ${o.y}) rotate(${o.rotation})`} data-mark-overlay="">
+    <g transform={`translate(${o.x} ${o.y}) rotate(${o.rotation}) scale(${o.scaleX} ${o.scaleY})`} data-mark-overlay="">
       <rect
         x={-layout.boxWidth / 2}
         y={-layout.boxHeight / 2}
