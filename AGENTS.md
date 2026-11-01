@@ -15,3 +15,5 @@
 - Project data stores the original Unicode text and object properties only; rendered output is derived. Why: projects stay editable and exports reproducible.
 - Persistence is local (localStorage for projects, IndexedDB for uploaded fonts, downloadable .acs.json with embedded fonts) until a backend is added. Why: no account required for the first milestone.
 - Drags use `replace` during movement and one `commitFrom(base)` at pointer-up; rapid same-field edits coalesce via a key. Why: one undo step per user action.
+- Fonts the studio ships itself live in `public/fonts/` next to their licence text and are listed in both `BUNDLED_FONTS` (with `url`) and `BUNDLED_SOURCES`. A modified OFL font must be renamed away from its Reserved Font Name. Why: the same file feeds screen, glyph engine and exports, and the licence must travel with it.
+- The tool rail stays short: related tools open from one rail button as a popover group; fonts and the ornament library are their own rail entries (ornaments as a movable, resizable floating window). Why: keeps the canvas uncluttered as tools grow.
