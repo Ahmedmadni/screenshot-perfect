@@ -55,3 +55,11 @@ A feature marked implemented is present in the source, not automatically browser
 - [x] TypeScript check passed on commit `adf6a831fc9b8393aa4a66d43f438db217aca4d8`
 - [x] Identified and corrected a stale migration test expectation: v1 projects correctly migrate to current format v3
 - [ ] Re-run tests, lint, and build after the migration-test and searchable-library changes; latest workflow run is pending job allocation
+
+
+### Milestone 4 progress — editable vector presets
+- [x] Added a separate Vector category in the decoration library: eight-point star, diamond, circular frame, arch, frame, and a layered geometric rosette
+- [x] Vector presets are inserted as native ShapeObjects (not text glyphs), so width/height, fill, stroke, stroke width, rotation, opacity, ordering, duplication, deletion, project save, and vector export use the existing shape pipeline
+- [x] Both click insertion and canvas drop now route through the same vector-aware insertion handler
+- [ ] Browser-verify all vector presets, drag/drop coordinates at non-100% zoom and with canvas scrolling, then save/reopen and export PNG/SVG/PDF
+- [ ] Build custom Bézier floral and interlaced ornament packs with independently editable paths (current rosette is a layered set of native shapes)
