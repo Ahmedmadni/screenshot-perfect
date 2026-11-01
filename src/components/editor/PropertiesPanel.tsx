@@ -1,11 +1,15 @@
-import { AlignCenter, AlignLeft, AlignRight, ArrowDownToLine, ArrowUpToLine, Copy, PenLine, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowDownToLine, ArrowUpToLine, Copy, PenLine, Trash2, Waypoints } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { SHAPE_LABELS, uid, type EditorObject, type ShapeKind, type TextAlign } from "@/editor/model";
 import { convertNode, deleteNodes, normalizePath, setClosed } from "@/editor/paths/edit";
 import type { Editor } from "@/editor/useEditor";
 import { FontPicker } from "./FontPicker";
 import { CalligraphyPanel } from "./CalligraphyPanel";
+import { glyphEngine } from "@/editor/glyphs/engine";
+import { useEngineStatus } from "@/editor/glyphs/useGlyphEngine";
+import { glyphsToPaths } from "@/editor/paths/convert";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -64,6 +68,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEditText: (id: string) => void }) {
   const { doc, selected, setDoc, updateObject, moveLayer, removeObject, addObject } = editor;
+  const glyphStatus = useEngineStatus(selected?.type === "text" ? selected.fontFamily : "", selected?.type === "text" ? selected.fontWeight : 400);
 
   if (!selected) {
     return (
@@ -121,6 +126,19 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
             {o.text}
           </button>
           <Button variant="outline" size="sm" className="w-full" onClick={() => onEditText(o.id)}><PenLine /> Edit text</Button>
+          <Button variant="outline" size="sm" className="w-full" disabled={glyphStatus.state !== "ready"} onClick={() => {
+            if (glyphStatus.state !== "ready") return;
+            try {
+              const layout = glyphEngine.layout(o);
+              const paths = glyphsToPaths(o, layout);
+              if (!paths.length) { toast.error("لم يتم العثور على مسارات حروف قابلة للتحويل لهذا الخط."); return; }
+              editor.setDoc({ ...doc, objects: [...doc.objects, ...paths] });
+              editor.setSelectedId(paths[0]!.id);
+              editor.setTool("node");
+              toast.success("تم إنشاء " + paths.length + " مسارًا متجهيًا مستقلًا. النص الأصلي ما زال محفوظًا.");
+            } catch (error) { toast.error("تعذر تحويل الحروف: " + (error as Error).message); }
+          }}><Waypoints /> تحويل الحروف إلى مسارات متجهية</Button>
+          <p className="text-[10px] leading-relaxed text-muted-foreground">ينشئ نسخة متجهية مستقلة لكل حرف وحركة، مع إبقاء النص الأصلي دون تغيير. بعد التحويل يمكنك تحديد العقد ومقابض Bézier وتعديلها.</p>
           <Field label="Font family"><FontPicker value={o.fontFamily} preview={o.text} onChange={(f) => up({ fontFamily: f })} /></Field>
           <div className="grid grid-cols-2 gap-2">
             <Num label="Font size" value={o.fontSize} min={4} max={2000} onChange={(n) => up({ fontSize: n }, "fs")} />
