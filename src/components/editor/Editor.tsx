@@ -105,6 +105,10 @@ export function Editor() {
     setEditingId(t.id);
   };
   const addShape = (k: ShapeKind) => addObject(createShape(doc, k));
+  const insertDecoration = (value: string, x = doc.width / 2, y = doc.height / 2) => {
+    const item = createText(doc, { name: "عنصر زخرفي", text: value, x, y, fontSize: 76, color: "#a0703a", align: "center", direction: "rtl" });
+    addObject(item);
+  };
 
   const doExport = async (kind: "png1" | "png2" | "png4" | "svg" | "outline" | "project") => {
     setExporting(true);
@@ -306,7 +310,7 @@ export function Editor() {
           <aside className="w-12 shrink-0 border-e bg-panel">{tools}</aside>
           <aside className="hidden w-64 shrink-0 border-e bg-panel lg:block"><LeftPanel editor={editor} /></aside>
           <main ref={canvasWrap} className="min-w-0 flex-1">
-            <CanvasView editor={editor} zoom={zoom} onZoom={setZoom} showChecker={showChecker} showBounds={showBounds} fontsVersion={fontsVersion} onEditText={setEditingId} />
+            <CanvasView editor={editor} zoom={zoom} onZoom={setZoom} showChecker={showChecker} showBounds={showBounds} fontsVersion={fontsVersion} onEditText={setEditingId} onDropDecoration={insertDecoration} />
           </main>
           <aside className="hidden w-72 shrink-0 overflow-y-auto border-s bg-panel lg:block">
             <PropertiesPanel editor={editor} onEditText={setEditingId} />
