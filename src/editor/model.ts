@@ -35,6 +35,10 @@ export interface Kashida {
  * entries after the text is edited). Offsets are in em (fractions of font size),
  * y grows downward.
  */
+export interface GlyphAdjust {
+  at: number; gid: number; dx: number; dy: number; scaleX: number; scaleY: number; thickness: number;
+}
+
 export interface MarkAdjust {
   at: number;
   ch: string;
@@ -65,6 +69,7 @@ export interface TextObject extends BaseObject {
   /** OpenType feature overrides (tag → value). Only non-default settings are stored. */
   features: Record<string, number>;
   marks: MarkAdjust[];
+  glyphs: GlyphAdjust[];
 }
 
 export type ShapeKind = "rect" | "ellipse" | "diamond" | "star8" | "arch";
@@ -123,7 +128,7 @@ export interface PathObject extends BaseObject {
 export type EditorObject = TextObject | ShapeObject | PathObject;
 
 /** Current project format version. v1/v2 files are migrated on load (see storage.ts). */
-export const PROJECT_VERSION = 4;
+export const PROJECT_VERSION = 5;
 
 export interface ProjectDoc {
   format: "acs-project";
@@ -186,6 +191,7 @@ export function createText(doc: ProjectDoc, partial: Partial<TextObject> = {}): 
     kashida: [],
     features: {},
     marks: [],
+    glyphs: [],
     ...partial,
   };
 }
