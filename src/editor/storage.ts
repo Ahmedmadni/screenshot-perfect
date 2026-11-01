@@ -19,6 +19,9 @@ const textSchema = z.object({
   text: z.string(),
   fontFamily: z.string(),
   fontSize: z.number().positive(),
+  scaleX: z.number().positive().default(1),
+  scaleY: z.number().positive().default(1),
+  strokeWidth: z.number().min(0).max(100).default(0),
   fontWeight: z.union([z.literal(400), z.literal(700)]),
   color: z.string(),
   align: z.enum(["start", "center", "end"]),
@@ -69,7 +72,7 @@ const pathSchema = z.object({
 
 const projectSchemaRaw = z.object({
   format: z.literal("acs-project"),
-  version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   id: z.string(),
   name: z.string(),
   width: z.number().positive(),
@@ -81,7 +84,7 @@ const projectSchemaRaw = z.object({
   updatedAt: z.string(),
 });
 
-/** Accepts v1–v3 projects and migrates them to the current version without dropping data. */
+/** Accepts v1–v4 projects and migrates them to the current version without dropping data. */
 export const projectSchema = projectSchemaRaw.transform((p) => ({ ...p, version: PROJECT_VERSION }) as ProjectDoc);
 
 const fileSchema = z.object({
