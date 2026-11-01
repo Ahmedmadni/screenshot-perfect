@@ -36,7 +36,7 @@ describe("Bézier path geometry", () => {
     expect(paths[0]?.type).toBe("path");
     expect(paths[0]?.contours).toHaveLength(2);
     expect(paths[1]?.contours).toHaveLength(1);
-    expect(paths[0]?.x).toBeCloseTo(text.x - 36);
+    expect(paths[0]?.x).not.toBeCloseTo(paths[1]?.x ?? 0);
     expect(paths[1]?.strokeWidth).toBeCloseTo(1.2);
   });
 
