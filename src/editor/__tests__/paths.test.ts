@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createProject, createText } from "../model";
+import { createProject, createText, type Contour } from "../model";
 import { glyphsToPaths } from "../paths/convert";
 import { parseProjectFile } from "../storage";
-import { createPathObject, convertNode, insertNode, moveHandle, setClosed } from "../paths/edit";
+import { createPathObject, convertNode, insertNode, moveHandle, moveNodes, setClosed } from "../paths/edit";
 import { contourToD, cubicAt, segment, splitCubic } from "../paths/geometry";
 import { curvatureNodes, cubicsToNodes, fitCurve } from "../paths/fit";
 
@@ -78,6 +78,23 @@ describe("Bézier path geometry", () => {
     expect(inserted.x).toBeCloseTo(point[0], 8);
     expect(inserted.y).toBeCloseTo(point[1], 8);
     expect(result.contour.nodes[0]!.out.some((n) => Math.abs(n) > 0)).toBe(true);
+  });
+
+
+  it("moves multiple selected nodes across contours without changing their handles", () => {
+    const second: Contour = {
+      nodes: [{ x: 20, y: 30, in: [-2, 0], out: [3, 0], type: "smooth" }],
+      closed: false,
+    };
+    const source = [curved, second];
+    const moved = moveNodes(source, [[0, 1], [1, 0]], [7, -4]);
+    expect(moved[0]?.nodes[0]?.x).toBe(0);
+    expect(moved[0]?.nodes[1]?.x).toBe(107);
+    expect(moved[0]?.nodes[1]?.y).toBe(-4);
+    expect(moved[0]?.nodes[1]?.in).toEqual(curved.nodes[1]?.in);
+    expect(moved[1]?.nodes[0]?.x).toBe(27);
+    expect(moved[1]?.nodes[0]?.y).toBe(26);
+    expect(moved[1]?.nodes[0]?.out).toEqual([3, 0]);
   });
 
   it("converts nodes to symmetric handles", () => {
