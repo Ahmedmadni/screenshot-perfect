@@ -7,7 +7,7 @@ export function GlyphText({ o, layout }: { o: TextObject; layout: TextLayout }) 
   return (
     <>
       <rect x={-layout.boxWidth / 2} y={-layout.boxHeight / 2} width={layout.boxWidth} height={layout.boxHeight} fill="transparent" />
-      <g fill={o.color} stroke={stroke ? o.color : undefined} strokeLinejoin="round" data-glyph-text="">
+      <g fill={o.color} stroke={stroke || o.strokeWidth > 0 ? o.color : undefined} strokeWidth={Math.max(stroke, o.strokeWidth)} strokeLinejoin="round" paintOrder="stroke fill" data-glyph-text="">
         {layout.glyphs.map((g, i) =>
           g.d ? (
             <path key={i} transform={`matrix(${g.k} 0 0 ${-g.k} ${g.tx} ${g.ty})`} d={g.d} strokeWidth={stroke ? stroke / g.k : undefined} />
