@@ -4,7 +4,7 @@
  * entries before the edit keep their index, entries after it shift, entries
  * inside the edited range are dropped.
  */
-import type { Kashida, MarkAdjust, TextObject } from "../model";
+import type { GlyphAdjust, Kashida, MarkAdjust, TextObject } from "../model";
 import { normalizeKashida } from "./kashida";
 
 export function indexRemapper(oldText: string, newText: string): (i: number) => number | null {
@@ -17,7 +17,7 @@ export function indexRemapper(oldText: string, newText: string): (i: number) => 
   return (i) => (i < p ? i : i >= oldText.length - s ? i + delta : null);
 }
 
-export function remapAdjustments(o: Pick<TextObject, "text" | "kashida" | "marks">, newText: string): { kashida: Kashida[]; marks: MarkAdjust[] } {
+export function remapAdjustments(o: Pick<TextObject, "text" | "kashida" | "marks" | "glyphs">, newText: string): { kashida: Kashida[]; marks: MarkAdjust[]; glyphs: GlyphAdjust[] } {
   const map = indexRemapper(o.text, newText);
   const kashida = normalizeKashida(
     newText,
@@ -30,5 +30,9 @@ export function remapAdjustments(o: Pick<TextObject, "text" | "kashida" | "marks
     const at = map(m.at);
     return at === null || newText[at] !== m.ch ? [] : [{ ...m, at }];
   });
-  return { kashida, marks };
+  const glyphs = o.glyphs.flatMap((g) => {
+    const at = map(g.at);
+    return at === null ? [] : [{ ...g, at }];
+  });
+  return { kashida, marks, glyphs };
 }
