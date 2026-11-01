@@ -42,6 +42,8 @@ export function editorReducer(s: EditorState, a: EditorAction, now = Date.now())
 const reducer = (s: EditorState, a: EditorAction) => editorReducer(s, a);
 
 /** Diacritic editing mode: which text object, and which mark (original text index) is selected. */
+export interface GlyphEdit { objectId: string; at: number; gid: number; }
+
 export interface MarkEdit {
   objectId: string;
   at: number | null;
@@ -64,6 +66,7 @@ export function useEditor(initial: ProjectDoc) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [savedDoc, setSavedDoc] = useState<ProjectDoc | null>(null);
   const [markEdit, setMarkEdit] = useState<MarkEdit | null>(null);
+  const [glyphEdit, setGlyphEdit] = useState<GlyphEdit | null>(null);
   const [tool, setToolRaw] = useState<Tool>("select");
   const [nodeSel, setNodeSel] = useState<NodeRef[]>([]);
   const [draft, setDraft] = useState<PathDraft | null>(null);
@@ -96,6 +99,7 @@ export function useEditor(initial: ProjectDoc) {
     setDraft(null);
     setNodeSel([]);
     setMarkEdit(null);
+    setGlyphEdit(null);
   }, []);
 
   const setDoc = useCallback((next: ProjectDoc, key?: string) => dispatch({ type: "commit", doc: touch(next), key }), []);
@@ -155,6 +159,8 @@ export function useEditor(initial: ProjectDoc) {
     setSelectedId,
     markEdit,
     setMarkEdit,
+    glyphEdit,
+    setGlyphEdit,
     tool,
     setTool,
     nodeSel,
