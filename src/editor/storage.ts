@@ -32,6 +32,7 @@ const textSchema = z.object({
   // Added in project format v2; v1 files get safe defaults.
   kashida: z.array(z.object({ at: z.number().int().min(0), count: z.number().int().min(0).max(50) })).default([]),
   features: z.record(z.number().int().min(0).max(99)).default({}),
+  glyphs: z.array(z.object({ at: z.number().int().min(0), gid: z.number().int().min(0), dx: z.number(), dy: z.number(), scaleX: z.number().positive(), scaleY: z.number().positive(), thickness: z.number().min(0).max(100) })).default([]),
   marks: z
     .array(z.object({ at: z.number().int().min(0), ch: z.string(), dx: z.number(), dy: z.number(), scale: z.number().positive() }))
     .default([]),
@@ -72,7 +73,7 @@ const pathSchema = z.object({
 
 const projectSchemaRaw = z.object({
   format: z.literal("acs-project"),
-  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
   id: z.string(),
   name: z.string(),
   width: z.number().positive(),
@@ -84,7 +85,7 @@ const projectSchemaRaw = z.object({
   updatedAt: z.string(),
 });
 
-/** Accepts v1–v4 projects and migrates them to the current version without dropping data. */
+/** Accepts v1–v5 projects and migrates them to the current version without dropping data. */
 export const projectSchema = projectSchemaRaw.transform((p) => ({ ...p, version: PROJECT_VERSION }) as ProjectDoc);
 
 const fileSchema = z.object({
