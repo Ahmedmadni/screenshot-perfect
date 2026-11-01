@@ -37,10 +37,11 @@ describe("tatweel elongation", () => {
 
 describe("adjustments follow text edits", () => {
   it("shifts entries after an edit and drops entries inside it", () => {
-    const o = { text: "بِسْمِ", kashida: [{ at: 2, count: 2 }], marks: [{ at: 1, ch: "\u0650", dx: 0.1, dy: 0, scale: 1 }] };
+    const o = { text: "بِسْمِ", kashida: [{ at: 2, count: 2 }], marks: [{ at: 1, ch: "\u0650", dx: 0.1, dy: 0, scale: 1 }], glyphs: [{ at: 2, gid: 91, dx: 0.1, dy: -0.1, scaleX: 1.2, scaleY: 0.9, thickness: 1 }] };
     const r = remapAdjustments(o, "ٱ" + o.text);
     expect(r.kashida).toEqual([{ at: 3, count: 2 }]);
     expect(r.marks[0]!.at).toBe(2);
+    expect(r.glyphs).toEqual([{ ...o.glyphs[0], at: 3 }]);
     const removed = remapAdjustments(o, "بسم");
     expect(removed.marks).toEqual([]);
   });
