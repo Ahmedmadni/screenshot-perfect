@@ -357,7 +357,7 @@ export function Editor() {
             <Tip label="Fit (Ctrl+0)"><button className="tool-btn" onClick={fit} aria-label="Fit to screen"><Maximize className="size-4" /></button></Tip>
           </div>
           <div className="flex-1" />
-          <Tip label="Layers & fonts"><button className="tool-btn lg:hidden" onClick={() => setSheet("left")} aria-label="Layers and fonts"><Layers className="size-4" /></button></Tip>
+          <Tip label="Layers · الطبقات"><button className="tool-btn lg:hidden" onClick={() => setSheet("left")} aria-label="Layers"><Layers className="size-4" /></button></Tip>
           <Tip label="Properties"><button className="tool-btn lg:hidden" onClick={() => setSheet("right")} aria-label="Properties"><SlidersHorizontal className="size-4" /></button></Tip>
           <Popover>
             <Tip label="Settings">
@@ -418,7 +418,7 @@ export function Editor() {
 
         <Sheet open={sheet === "left"} onOpenChange={(o) => !o && setSheet(null)}>
           <SheetContent side="left" className="w-72 p-0">
-            <SheetHeader className="sr-only"><SheetTitle>Layers and fonts</SheetTitle></SheetHeader>
+            <SheetHeader className="sr-only"><SheetTitle>Layers</SheetTitle></SheetHeader>
             <div className="h-full pt-8"><LeftPanel editor={editor} /></div>
           </SheetContent>
         </Sheet>
