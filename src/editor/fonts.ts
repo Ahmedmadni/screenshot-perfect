@@ -31,6 +31,8 @@ export const BUNDLED_FONTS: { family: string; style: string }[] = [
   { family: "Aref Ruqaa", style: "Ruqʿah" },
   { family: "Reem Kufi", style: "Kufi" },
   { family: "Noto Kufi Arabic", style: "Kufi" },
+  { family: "Noto Sans Arabic", style: "Modern Naskh / Sans" },
+  { family: "IBM Plex Sans Arabic", style: "Professional Sans" },
   { family: "Rakkas", style: "Display" },
 ];
 
@@ -45,6 +47,8 @@ export const GOOGLE_FONTS_HREF =
     "Aref+Ruqaa:wght@400;700",
     "Reem+Kufi:wght@400;700",
     "Noto+Kufi+Arabic:wght@400;700",
+    "Noto+Sans+Arabic:wght@400;500;600;700",
+    "IBM+Plex+Sans+Arabic:wght@400;500;600;700",
     "Rakkas",
     "IBM+Plex+Sans+Arabic:wght@400;500;600",
   ]
