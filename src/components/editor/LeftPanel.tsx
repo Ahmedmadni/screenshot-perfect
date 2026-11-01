@@ -1,12 +1,11 @@
 import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Square, Trash2, Type, Unlock, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fontService } from "@/editor/fonts";
-import { createText } from "@/editor/model";
 import type { Editor } from "@/editor/useEditor";
 import { FontUploadButton, useFonts } from "./FontPicker";
 import { DecorationsPanel } from "./DecorationsPanel";
 
-export function LeftPanel({ editor }: { editor: Editor }) {
+export function LeftPanel({ editor, onInsertDecoration }: { editor: Editor; onInsertDecoration: (value: string) => void }) {
   const { doc, selectedId, setSelectedId, updateObject, moveLayer, removeObject } = editor;
   const fonts = useFonts();
   const layers = [...doc.objects].reverse();
@@ -40,7 +39,7 @@ export function LeftPanel({ editor }: { editor: Editor }) {
           ))}
         </ul>
       </TabsContent>
-      <TabsContent value="decor" className="mt-0 min-h-0 flex-1"><DecorationsPanel onInsert={(value) => editor.addObject(createText(editor.doc, { text: value, name: "عنصر زخرفي", fontSize: 76, color: "#a0703a", align: "center", direction: "rtl" }))} /></TabsContent>
+      <TabsContent value="decor" className="mt-0 min-h-0 flex-1"><DecorationsPanel onInsert={onInsertDecoration} /></TabsContent>
       <TabsContent value="assets" className="mt-0 flex-1 space-y-3 overflow-y-auto px-3 pb-3">
         <FontUploadButton />
         {(["bundled", "uploaded", "system"] as const).map((src) => {
