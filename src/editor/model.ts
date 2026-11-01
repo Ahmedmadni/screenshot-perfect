@@ -198,7 +198,7 @@ export function createText(doc: ProjectDoc, partial: Partial<TextObject> = {}): 
 
 /** True when the object needs the glyph engine (features or diacritic adjustments). */
 export function needsGlyphEngine(o: TextObject): boolean {
-  return Object.keys(o.features).length > 0 || o.marks.length > 0;
+  return Object.keys(o.features).length > 0 || o.marks.length > 0 || o.glyphs.length > 0;
 }
 
 export const SHAPE_LABELS: Record<ShapeKind, string> = {
