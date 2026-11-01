@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createProject, createText, type Contour } from "../model";
 import { glyphsToPaths } from "../paths/convert";
 import { parseProjectFile } from "../storage";
-import { createPathObject, convertNode, insertNode, moveHandle, moveNodes, setClosed } from "../paths/edit";
+import { createPathObject, convertNode, convertNodes, insertNode, moveHandle, moveNodes, setClosed } from "../paths/edit";
 import { contourToD, cubicAt, segment, splitCubic } from "../paths/geometry";
 import { curvatureNodes, cubicsToNodes, fitCurve } from "../paths/fit";
 
@@ -95,6 +95,21 @@ describe("Bézier path geometry", () => {
     expect(moved[1]?.nodes[0]?.x).toBe(27);
     expect(moved[1]?.nodes[0]?.y).toBe(26);
     expect(moved[1]?.nodes[0]?.out).toEqual([3, 0]);
+  });
+
+  it("converts a multi-contour node selection to one shared handle type", () => {
+    const second: Contour = {
+      nodes: [{ x: 20, y: 30, in: [-4, 0], out: [0, 8], type: "corner" }],
+      closed: false,
+    };
+    const result = convertNodes([curved, second], [[0, 0], [1, 0]], "symmetric");
+    for (const contour of result) {
+      const node = contour.nodes[0]!;
+      expect(node.type).toBe("symmetric");
+      expect(Math.hypot(...node.in)).toBeCloseTo(Math.hypot(...node.out), 8);
+      expect(node.in[0]).toBeCloseTo(-node.out[0], 8);
+      expect(node.in[1]).toBeCloseTo(-node.out[1], 8);
+    }
   });
 
   it("converts nodes to symmetric handles", () => {
