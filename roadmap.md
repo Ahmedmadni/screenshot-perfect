@@ -63,3 +63,10 @@ A feature marked implemented is present in the source, not automatically browser
 - [x] Both click insertion and canvas drop now route through the same vector-aware insertion handler
 - [ ] Browser-verify all vector presets, drag/drop coordinates at non-100% zoom and with canvas scrolling, then save/reopen and export PNG/SVG/PDF
 - [ ] Build custom Bézier floral and interlaced ornament packs with independently editable paths (current rosette is a layered set of native shapes)
+
+
+### Bézier ornament pack — first native path preset
+- [x] Added an eight-petal floral rosette built from editable cubic Bézier contours (one PathObject with eight petal contours plus a separate center contour)
+- [x] Added geometry tests for contour count, closure, handles, placement, and bounds
+- [ ] Verify path node editing, color/stroke controls, selection, save/reopen, and SVG/PDF/PNG export in a real browser
+- [ ] Expand the pack with arabesque leaves, paired vines, interlaced bands, and ornamental corner pieces
