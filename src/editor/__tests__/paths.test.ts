@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createProject } from "../model";
+import { createProject, createText } from "../model";
+import { glyphsToPaths } from "../paths/convert";
 import { parseProjectFile } from "../storage";
 import { createPathObject, convertNode, insertNode, moveHandle, setClosed } from "../paths/edit";
 import { contourToD, cubicAt, segment, splitCubic } from "../paths/geometry";
@@ -14,6 +15,31 @@ const curved = {
 };
 
 describe("Bézier path geometry", () => {
+
+  it("converts shaped glyphs into separate editable paths while keeping glyph contours together", () => {
+    const doc = createProject();
+    const text = createText(doc, { text: "اب", x: 240, y: 180, scaleX: 1.2, scaleY: 0.8 });
+    const layout = {
+      glyphs: [
+        { gid: 10, src: 0, editAt: 0, d: "M0 0L20 0L20 20Z M5 5L5 10L10 10Z", k: 1, tx: -30, ty: 0, sx: 1, sy: 1, thickness: 0 },
+        { gid: 11, src: 1, editAt: 1, d: "M0 0L12 0L12 18Z", k: 1, tx: 10, ty: 0, sx: 1.1, sy: 0.9, thickness: 1 },
+      ],
+      boxWidth: 80,
+      boxHeight: 40,
+      missing: [],
+      boldStroke: 0,
+      markCount: 0,
+      unmatchedAdjustments: 0,
+    };
+    const paths = glyphsToPaths(text, layout);
+    expect(paths).toHaveLength(2);
+    expect(paths[0]?.type).toBe("path");
+    expect(paths[0]?.contours).toHaveLength(2);
+    expect(paths[1]?.contours).toHaveLength(1);
+    expect(paths[0]?.x).toBeCloseTo(text.x - 36);
+    expect(paths[1]?.strokeWidth).toBeCloseTo(1.2);
+  });
+
   it("evaluates cubic endpoints and midpoint", () => {
     const c: [[number, number], [number, number], [number, number], [number, number]] = [[0, 0], [0, 100], [100, 100], [100, 0]];
     expect(cubicAt(c, 0)).toEqual([0, 0]);
