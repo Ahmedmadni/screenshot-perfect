@@ -3,6 +3,7 @@ import { ChevronDown, Move, RotateCcw, Sparkles } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildFeaturePanel, featureLabel, setFeature } from "@/editor/calligraphy/features";
 import { getMarkAdjust, MARK_SCALE_MAX, MARK_SCALE_MIN, markName, resetMarkAdjust, setMarkAdjust } from "@/editor/calligraphy/marks";
 import { kashidaSlots } from "@/editor/calligraphy/kashida";
@@ -54,6 +55,7 @@ function SmallNum({ label, value, onChange, step = 1, min, max, suffix }: { labe
 export function CalligraphyPanel({ editor, o }: { editor: Editor; o: TextObject }) {
   const { updateObject, markEdit, setMarkEdit } = editor;
   const [kashidaOpen, setKashidaOpen] = useState(false);
+  const [tashkeelOpen, setTashkeelOpen] = useState(false);
   const [open, setOpen] = useState(true);
   const status = useEngineStatus(o.fontFamily, o.fontWeight);
   const up = (patch: Partial<TextObject>, key?: string) => updateObject(o.id, patch, key);
@@ -151,6 +153,9 @@ export function CalligraphyPanel({ editor, o }: { editor: Editor; o: TextObject 
                 >
                   <Move /> {editingMarks ? "Done editing diacritics" : "Edit diacritics on canvas"}
                 </Button>
+                <Button size="sm" variant="outline" className="w-full" disabled={!layout?.markCount} onClick={() => setTashkeelOpen(true)}>
+                  <Sparkles /> Open dedicated Tashkeel workspace · مساحة التشكيل
+                </Button>
                 {editingMarks && at === null && <p className="text-[11px] text-muted-foreground">Click a diacritic on the canvas, then drag it or use the arrow keys (Shift = 10 px).</p>}
                 {editingMarks && at !== null && ch && (
                   <div className="space-y-2 rounded-md border bg-card p-2">
@@ -176,6 +181,58 @@ export function CalligraphyPanel({ editor, o }: { editor: Editor; o: TextObject 
           </Group>
         </CollapsibleContent>
       </Collapsible>
+      <Dialog open={tashkeelOpen} onOpenChange={setTashkeelOpen}>
+        <DialogContent className="flex max-h-[88vh] w-[min(96vw,760px)] flex-col overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4">
+            <DialogTitle>مساحة التشكيل · Tashkeel Studio</DialogTitle>
+            <DialogDescription>اختر أي حركة في النص ثم اضبط موضعها وحجمها بدقة. تبقى الحركات مرتبطة بالنص وقابلة للتحرير.</DialogDescription>
+          </DialogHeader>
+          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-[1fr_250px]">
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-muted/30 p-4 text-center">
+                <p dir={o.direction} className="text-3xl leading-[2.4]" style={{ fontFamily: \`"\${o.fontFamily}", serif\` }}>{o.text}</p>
+                <p className="mt-2 text-[10px] text-muted-foreground">معاينة النص · اختر حركة من القائمة لضبطها</p>
+              </div>
+              <div className="space-y-2">
+                <div className="text-xs font-semibold">الحركات الموجودة في النص · {layout?.markCount ?? 0}</div>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                  {(layout?.glyphs.flatMap((g) => g.mark ? [{ at: g.mark.at, ch: g.mark.ch }] : []) ?? []).map((m, i) => {
+                    const selected = at === m.at;
+                    return (
+                      <button key={\`\${m.at}-\${i}\`} type="button" onClick={() => setMarkEdit({ objectId: o.id, at: m.at })}
+                        data-active={selected} className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-md border border-input bg-card p-2 data-[active=true]:border-primary data-[active=true]:bg-primary/10">
+                        <span className="text-2xl" style={{ fontFamily: \`"\${o.fontFamily}", serif\` }}>{\`◌\${m.ch}\`}</span>
+                        <span className="text-[9px] text-muted-foreground">{markName(m.ch).split(" · ")[0]}</span>
+                        <span className="text-[9px] text-muted-foreground">#{m.at}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <aside className="space-y-3 rounded-lg border p-3">
+              <div className="text-xs font-semibold">ضبط الحركة المحددة</div>
+              {at !== null && ch ? (
+                <>
+                  <div className="rounded-md bg-muted/40 p-3 text-center">
+                    <div className="text-4xl" style={{ fontFamily: \`"\${o.fontFamily}", serif\` }}>{\`◌\${ch}\`}</div>
+                    <div className="mt-1 text-xs">{markName(ch)}</div>
+                  </div>
+                  <SmallNum label="الإزاحة الأفقية" suffix="px" value={(adj?.dx ?? 0) * o.fontSize} onChange={(n) => setMark({ dx: n / o.fontSize }, "dx")} step={0.5} />
+                  <SmallNum label="الإزاحة الرأسية" suffix="px" value={(adj?.dy ?? 0) * o.fontSize} onChange={(n) => setMark({ dy: n / o.fontSize }, "dy")} step={0.5} />
+                  <SmallNum label="حجم الحركة" suffix="%" step={5} min={MARK_SCALE_MIN * 100} max={MARK_SCALE_MAX * 100} value={(adj?.scale ?? 1) * 100} onChange={(n) => setMark({ scale: n / 100 }, "scale")} />
+                  <Button size="sm" variant="outline" className="w-full" disabled={!adj} onClick={() => up({ marks: resetMarkAdjust(o.marks, at) })}><RotateCcw /> إعادة ضبط الحركة</Button>
+                </>
+              ) : <p className="text-xs leading-relaxed text-muted-foreground">اختر حركة من الشبكة لعرض أدوات التحكم الخاصة بها.</p>}
+              <Button size="sm" variant="ghost" className="w-full" disabled={!o.marks.length} onClick={() => up({ marks: [] })}>إعادة ضبط كل الحركات</Button>
+            </aside>
+          </div>
+          <div className="flex justify-between gap-2 border-t p-3">
+            <Button size="sm" variant="outline" onClick={() => setMarkEdit(null)}>إنهاء وضع التحديد</Button>
+            <Button size="sm" onClick={() => setTashkeelOpen(false)}>تم</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <KashidaDialog
         obj={o}
         open={kashidaOpen}
