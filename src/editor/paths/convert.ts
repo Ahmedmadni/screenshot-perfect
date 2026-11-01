@@ -5,7 +5,7 @@
 import { parsePath, type Seg } from "../glyphs/svgpath";
 import type { Mat } from "../glyphs/scene";
 import { shapePath, type Contour, type PathNode, type PathObject, type ShapeObject, type TextObject } from "../model";
-import type { TextLayout } from "../glyphs/layout";
+import type { PlacedGlyph, TextLayout } from "../glyphs/layout";
 import { textPaths } from "../glyphs/scene";
 import { dist, len, type Vec } from "./geometry";
 import { createPathObject } from "./edit";
@@ -86,6 +86,32 @@ export function textToPath(o: TextObject, layout: TextLayout): PathObject {
     name: `${o.name} (outlines)`,
   });
   return placeLocal(local, o);
+}
+
+
+/**
+ * Converts each shaped glyph to its own editable path object. A glyph may
+ * contain several contours (counters/holes); those contours stay together,
+ * while neighbouring glyphs remain independently selectable and editable.
+ */
+export function glyphsToPaths(o: TextObject, layout: TextLayout): PathObject[] {
+  return layout.glyphs
+    .filter((g) => g.d)
+    .map((g: PlacedGlyph, index) => {
+      const contours = segsToContours(parsePath(g.d), [
+        o.scaleX * g.k * g.sx, 0, 0, -o.scaleY * g.k * g.sy,
+        o.scaleX * g.tx, o.scaleY * g.ty,
+      ]);
+      const local = createPathObject(contours, {
+        fill: o.color,
+        stroke: g.thickness > 0 || layout.boldStroke > 0 ? o.color : "transparent",
+        strokeWidth: Math.max(g.thickness * o.scaleX, layout.boldStroke),
+        lineJoin: "round",
+        fillRule: "nonzero",
+        name: `${o.name} · glyph ${g.editAt >= 0 ? g.editAt + 1 : index + 1}`,
+      });
+      return placeLocal(local, o);
+    });
 }
 
 /** Contours were built around (0,0) in the source object's frame: move into place with its transform. */
