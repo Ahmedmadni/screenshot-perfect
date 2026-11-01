@@ -70,3 +70,12 @@ A feature marked implemented is present in the source, not automatically browser
 - [x] Added geometry tests for contour count, closure, handles, placement, and bounds
 - [ ] Verify path node editing, color/stroke controls, selection, save/reopen, and SVG/PDF/PNG export in a real browser
 - [ ] Expand the pack with arabesque leaves, paired vines, interlaced bands, and ornamental corner pieces
+
+
+## Text composition and professional Arabic typography — November 2026
+- [x] Expand the bundled Arabic font set with Noto Sans Arabic and IBM Plex Sans Arabic; add their verified TrueType sources to the HarfBuzz outline engine
+- [x] Expand the text editor with grouped Arabic diacritics, Qur'anic marks, hamza/letter forms, Arabic punctuation, tatweel insertion, character count, and remove-diacritics action
+- [x] Explain the supported route for traditional calligraphy fonts: import a properly licensed OTF/TTF/WOFF2 font through the font uploader
+- [ ] Add a verified, redistributable Thuluth font (do not label Naskh/Ruq'ah fonts as Thuluth); verify its shaping, glyph outlines, diacritics, and export
+- [ ] Add richer text controls: baseline/line spacing presets, paragraph spacing, text stroke/outline, and per-line alignment
+- [ ] Browser-verify all new font loading and HarfBuzz paths, text insertion at cursor/selection, diacritic removal, save/reopen, and PNG/SVG/PDF output
