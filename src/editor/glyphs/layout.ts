@@ -254,7 +254,7 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
     const x2 = g.tx + g.k * g.sx * (ext.xBearing + ext.width);
     const y1 = g.ty - g.k * g.sy * ext.yBearing;
     const y2 = g.ty - g.k * g.sy * (ext.yBearing + ext.height);
-    const outset = Math.max(boldOutset, g.thickness / 2, 0);
+    const outset = Math.max(boldOutset, (g.k * g.thickness) / 2, 0);
     minX = Math.min(minX, Math.min(x1, x2) - outset);
     maxX = Math.max(maxX, Math.max(x1, x2) + outset);
     minY = Math.min(minY, Math.min(y1, y2) - outset);
