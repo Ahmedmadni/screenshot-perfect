@@ -8,7 +8,7 @@ import { useGlyphEngineVersion } from "@/editor/glyphs/useGlyphEngine";
 import type { Editor } from "@/editor/useEditor";
 import { GlyphText } from "./GlyphText";
 import { contoursToD, dist, nearestOnPath } from "@/editor/paths/geometry";
-import { createPathObject, deleteSelectedNodes, insertNode, moveHandle, moveHandles, moveNodes, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide, type NodeRef } from "@/editor/paths/edit";
+import { createPathObject, deleteSelectedNodes, insertNode, moveHandles, moveNodes, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide, type NodeRef } from "@/editor/paths/edit";
 import { curvatureNodes, fitCurve, cubicsToNodes } from "@/editor/paths/fit";
 
 interface Props {
@@ -31,7 +31,7 @@ type Gesture =
   | { mode: "draft-handle"; start: { x: number; y: number }; index: number; kind: "pen" | "curvature" }
   | { mode: "freehand"; points: [number, number][] }
   | { mode: "path-node"; id: string; start: { x: number; y: number }; startLocal: [number, number]; base: ProjectDoc; obj: import("@/editor/model").PathObject; refs: NodeRef[] }
-  | { mode: "path-handle"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: import("@/editor/model").PathObject; refs: NodeRef[]; side: HandleSide };
+  | { mode: "path-handle"; id: string; start: { x: number; y: number }; base: ProjectDoc; startLocal: [number, number]; base: ProjectDoc; obj: import("@/editor/model").PathObject; refs: NodeRef[]; side: HandleSide };
 
 /** Layout for objects drawn from glyph outlines; null means "use live browser text". */
 function glyphLayoutFor(o: TextObject, force: boolean): TextLayout | null {
