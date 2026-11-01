@@ -194,7 +194,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       editor.setTool("select");
       return;
     }
-    if (g && g.mode !== "pan" && g.mode !== "draft-handle" && g.mode !== "freehand") commitFrom(g.base);
+    if (g && g.mode !== "pan" && g.mode !== "draft-handle") commitFrom(g.base);
   };
 
   const listen = () => {
