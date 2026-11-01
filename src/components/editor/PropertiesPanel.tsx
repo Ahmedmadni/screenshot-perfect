@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { SHAPE_LABELS, uid, type EditorObject, type ShapeKind, type TextAlign } from "@/editor/model";
-import { convertNode, deleteNodes, normalizePath, setClosed } from "@/editor/paths/edit";
+import { convertNodes, deleteSelectedNodes, normalizePath, setClosed } from "@/editor/paths/edit";
 import type { Editor } from "@/editor/useEditor";
 import { FontPicker } from "./FontPicker";
 import { CalligraphyPanel } from "./CalligraphyPanel";
@@ -233,34 +233,29 @@ export function PropertiesPanel({ editor, onEditText }: { editor: Editor; onEdit
               <option value="bevel">Bevel</option>
             </select>
           </Field>
-          {editor.tool === "node" && editor.nodeSel.length === 1 && (() => {
-            const [ci, ni] = editor.nodeSel[0]!;
-            const contour = o.contours[ci];
-            const node = contour?.nodes[ni];
-            if (!contour || !node) return null;
+          {editor.tool === "node" && editor.nodeSel.length > 0 && (() => {
+            const valid = editor.nodeSel.filter(([ci, ni]) => !!o.contours[ci]?.nodes[ni]);
+            if (!valid.length) return null;
+            const selectedNodes = valid.map(([ci, ni]) => o.contours[ci]!.nodes[ni]!);
+            const uniformType = selectedNodes.every((node) => node.type === selectedNodes[0]!.type) ? selectedNodes[0]!.type : null;
             const setNodeType = (type: "corner" | "smooth" | "symmetric") => {
-              const contours = o.contours.map((ct, i) => i === ci ? convertNode(ct, ni, type) : ct);
-              up({ contours }, "node-type");
+              up({ contours: convertNodes(o.contours, valid, type) }, "node-type");
             };
             return (
               <div className="space-y-2 rounded-md border border-input p-2">
-                <div className="text-xs font-medium">Selected node · نقطة محددة</div>
+                <div className="text-xs font-medium">Selected nodes · عقد محددة ({valid.length})</div>
                 <div className="grid grid-cols-3 gap-1">
                   {(["corner", "smooth", "symmetric"] as const).map((type) => (
-                    <button key={type} data-active={node.type === type} onClick={() => setNodeType(type)} className="rounded border border-input px-1 py-1 text-[10px] capitalize data-[active=true]:bg-primary data-[active=true]:text-primary-foreground">{type}</button>
+                    <button key={type} data-active={uniformType === type} onClick={() => setNodeType(type)} className="rounded border border-input px-1 py-1 text-[10px] capitalize data-[active=true]:bg-primary data-[active=true]:text-primary-foreground">{type}</button>
                   ))}
                 </div>
                 <p className="text-[10px] text-muted-foreground">Hold Alt while dragging a handle to temporarily move it independently.</p>
                 <Button size="sm" variant="outline" className="w-full" onClick={() => {
-                  const nextContour = deleteNodes(contour, [ni]);
-                  const contours = o.contours.flatMap((ct, i) => i !== ci ? [ct] : nextContour ? [nextContour] : []);
-                  if (!contours.length) removeObject(o.id);
-                  else {
-                    const normalized = normalizePath({ ...o, contours });
-                    updateObject(o.id, { contours: normalized.contours, x: normalized.x, y: normalized.y });
-                  }
+                  const updated = deleteSelectedNodes(o, valid);
+                  if (!updated.contours.length) removeObject(o.id);
+                  else updateObject(o.id, { contours: updated.contours, x: updated.x, y: updated.y });
                   editor.setNodeSel([]);
-                }}>Remove selected node</Button>
+                }}>Remove selected nodes ({valid.length})</Button>
               </div>
             );
           })()}
