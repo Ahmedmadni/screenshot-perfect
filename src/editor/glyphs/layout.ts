@@ -223,7 +223,8 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
   }
 
   const maxW = Math.max(o.fontSize * 0.3, ...lineGlyphs.map((l) => l.width));
-  const boxWidth = maxW + o.fontSize * 0.2;
+  let boxWidth = maxW + o.fontSize * 0.2;
+  let boxHeight = Math.max(1, lines.length) * lh;
   const anchor = o.align === "center" ? 0 : (o.align === "start") === (o.direction === "rtl") ? boxWidth / 2 : -boxWidth / 2;
   lineGlyphs.forEach((l, i) => {
     const x0 = o.align === "center" ? anchor - l.width / 2 : (o.align === "start") === (o.direction === "rtl") ? anchor - l.width : anchor;
@@ -239,10 +240,33 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
     }
   });
 
+  // Expand the centred object bounds to include every transformed outline.
+  // HarfBuzz extents are in font units (y-up); SVG/object coordinates are y-down.
+  let minX = -boxWidth / 2;
+  let maxX = boxWidth / 2;
+  let minY = -boxHeight / 2;
+  let maxY = boxHeight / 2;
+  const boldOutset = o.fontWeight >= 600 && sf.syntheticBold ? syntheticBoldStroke(o.fontSize) / 2 : 0;
+  for (const g of glyphs) {
+    const ext = font.glyphExtents(g.gid);
+    if (!ext) continue;
+    const x1 = g.tx + g.k * g.sx * ext.xBearing;
+    const x2 = g.tx + g.k * g.sx * (ext.xBearing + ext.width);
+    const y1 = g.ty - g.k * g.sy * ext.yBearing;
+    const y2 = g.ty - g.k * g.sy * (ext.yBearing + ext.height);
+    const outset = Math.max(boldOutset, g.thickness / 2, 0);
+    minX = Math.min(minX, Math.min(x1, x2) - outset);
+    maxX = Math.max(maxX, Math.max(x1, x2) + outset);
+    minY = Math.min(minY, Math.min(y1, y2) - outset);
+    maxY = Math.max(maxY, Math.max(y1, y2) + outset);
+  }
+  boxWidth = Math.max(boxWidth, 2 * Math.max(Math.abs(minX), Math.abs(maxX)));
+  boxHeight = Math.max(boxHeight, 2 * Math.max(Math.abs(minY), Math.abs(maxY)));
+
   return {
     glyphs,
     boxWidth,
-    boxHeight: Math.max(1, lines.length) * lh,
+    boxHeight,
     missing: [...missing],
     boldStroke: o.fontWeight >= 600 && sf.syntheticBold ? syntheticBoldStroke(o.fontSize) : 0,
     markCount,
