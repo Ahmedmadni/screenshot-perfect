@@ -44,6 +44,7 @@ export interface PlacedGlyph {
   tx: number;
   ty: number;
   mark?: { at: number; ch: string; adjusted: boolean; box: Box };
+  editAt: number; sx: number; sy: number; thickness: number;
 }
 
 export interface TextLayout {
@@ -100,6 +101,7 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
   const lh = o.fontSize * o.lineHeight;
   const baselineShift = ((sf.ascender + sf.descender) / 2) * k;
   const adjustments = new Map(o.marks.map((m) => [m.at, m]));
+  const glyphAdjustments = new Map(o.glyphs.map((g) => [`${g.at}:${g.gid}`, g]));
   const matched = new Set<number>();
   const missing = new Set<string>();
   const glyphs: PlacedGlyph[] = [];
@@ -170,7 +172,7 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
           const gid = g.codepoint;
           const ch = line[g.cluster] ?? "";
           if (gid === 0 && !/\s/.test(ch)) missing.add(ch);
-          const pg: PlacedGlyph = { gid, src: map[lineStart + g.cluster] ?? -1, d: sf.glyphPath(gid), k, tx: (pen + (g.xOffset ?? 0)) * k, ty: -(g.yOffset ?? 0) * k };
+          const pg: PlacedGlyph = { gid, src: map[lineStart + g.cluster] ?? -1, d: sf.glyphPath(gid), k, tx: (pen + (g.xOffset ?? 0)) * k, ty: -(g.yOffset ?? 0) * k, editAt: map[lineStart + g.cluster] ?? -1, sx: 1, sy: 1, thickness: 0 };
           const li = markOf.get(gi);
           if (li !== undefined) {
             markCount++;
@@ -189,6 +191,11 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
             const x0 = pg.tx + km * ext.xBearing;
             const y0 = pg.ty - km * ext.yBearing;
             pg.mark = { at: orig, ch: line[li]!, adjusted: ok, box: { x: x0, y: y0, w: km * ext.width, h: -km * ext.height } };
+          }
+          const glyphEdit = pg.src >= 0 ? glyphAdjustments.get(`${pg.src}:${gid}`) : undefined;
+          if (glyphEdit) {
+            pg.tx += glyphEdit.dx * o.fontSize; pg.ty += glyphEdit.dy * o.fontSize;
+            pg.sx = glyphEdit.scaleX; pg.sy = glyphEdit.scaleY; pg.thickness = glyphEdit.thickness;
           }
           placed.push(pg);
           pen += g.xAdvance ?? 0;
