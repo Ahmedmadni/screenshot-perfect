@@ -21,9 +21,11 @@ export function moveHandle(node: PathNode, side: HandleSide, v: Vec, independent
   const next: PathNode = { ...node, [side]: v };
   if (independent || node.type === "corner") return next;
   if (node.type === "symmetric") return { ...next, [other]: mul(v, -1) };
-  // smooth: keep the opposite handle's length, align it opposite to v
+  // Smooth nodes keep the opposite handle collinear and preserve its length.
+  // If the moved handle collapses to zero, collapse the opposite one as well.
   const l = len(node[other]);
-  if (l < EPS || len(v) < EPS) return next;
+  if (l < EPS) return next;
+  if (len(v) < EPS) return { ...next, [other]: [0, 0] };
   return { ...next, [other]: mul(norm(v), -l) };
 }
 
