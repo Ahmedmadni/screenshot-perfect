@@ -125,13 +125,16 @@ describe("Bézier path geometry", () => {
       nodes: [{ x: 20, y: 30, in: [-10, 0], out: [10, 0], type: "symmetric" }],
       closed: false,
     };
+    // Contour 0 holds a selected smooth node followed by an unselected node,
+    // so the test can prove that only the selected node's handles move.
     const first: Contour = {
-      nodes: [{ x: 0, y: 0, in: [0, -60], out: [0, 60], type: "smooth" }],
+      nodes: [{ x: 0, y: 0, in: [0, -60], out: [0, 60], type: "smooth" }, curved.nodes[1]!],
       closed: false,
     };
     const result = moveHandles([first, second], [[0, 0], [1, 0]], "out", [0, 12]);
     expect(result[0]?.nodes[0]?.out).toEqual([0, 72]);
-    expect(result[0]?.nodes[0]?.in).toEqual([-0, -60]);
+    expect(result[0]?.nodes[0]?.in[0]).toBeCloseTo(0, 8);
+    expect(result[0]?.nodes[0]?.in[1]).toBeCloseTo(-60, 8);
     expect(result[1]?.nodes[0]?.out).toEqual([10, 12]);
     expect(result[1]?.nodes[0]?.in).toEqual([-10, -12]);
     expect(result[0]?.nodes[1]).toEqual(curved.nodes[1]);
