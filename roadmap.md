@@ -54,7 +54,11 @@ A feature marked implemented is present in the source, not automatically browser
 ### Latest CI findings
 - [x] TypeScript check passed on commit `adf6a831fc9b8393aa4a66d43f438db217aca4d8`
 - [x] Identified and corrected a stale migration test expectation: v1 projects correctly migrate to current format v3
-- [ ] Re-run tests, lint, and build after the migration-test and searchable-library changes; latest workflow run is pending job allocation
+- [x] Fixed the failing `moves matching handles…` test: its fixture contour had one node, so index 1 was undefined; the contour now carries an unselected second node that must stay unchanged
+- [x] Added `pathEditing.test.ts` (19 tests): multi-node/multi-contour moves, smooth/symmetric/independent handles, zero-length handles, node deletion, type conversion, undo/redo integrity
+- [x] Local run (Nov 2 2026): TypeScript pass, 79/79 tests pass, production build pass
+- [ ] ESLint still fails on 626 pre-existing Prettier formatting errors in files not touched in this pass (plus 7 fast-refresh warnings); the only non-formatting error (Editor.tsx shortcut ternary) is fixed. Needs one dedicated formatting change, approved by the owner
+- [ ] Confirm the GitHub Actions result for the synced commit
 
 
 ### Milestone 4 progress — editable vector presets
