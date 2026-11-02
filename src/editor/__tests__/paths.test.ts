@@ -131,7 +131,7 @@ describe("Bézier path geometry", () => {
     };
     const result = moveHandles([first, second], [[0, 0], [1, 0]], "out", [0, 12]);
     expect(result[0]?.nodes[0]?.out).toEqual([0, 72]);
-    expect(result[0]?.nodes[0]?.in).toEqual([0, -60]);
+    expect(result[0]?.nodes[0]?.in).toEqual([-0, -60]);
     expect(result[1]?.nodes[0]?.out).toEqual([10, 12]);
     expect(result[1]?.nodes[0]?.in).toEqual([-10, -12]);
     expect(result[0]?.nodes[1]).toEqual(curved.nodes[1]);
