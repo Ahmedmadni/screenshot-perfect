@@ -133,6 +133,13 @@ describe("Bézier path geometry", () => {
     expect(result[0]?.nodes[1]).toEqual(curved.nodes[1]);
   });
 
+  it("collapses the opposite smooth handle when the moved handle reaches zero", () => {
+    const node = { ...curved.nodes[0]!, in: [-20, 0] as [number, number], out: [20, 0] as [number, number], type: "smooth" as const };
+    const moved = moveHandle(node, "out", [0, 0]);
+    expect(moved.out).toEqual([0, 0]);
+    expect(moved.in).toEqual([0, 0]);
+  });
+
   it("keeps smooth handles collinear when a handle moves", () => {
     const node = { ...curved.nodes[0]!, in: [-20, 0] as [number, number], out: [20, 0] as [number, number], type: "smooth" as const };
     const moved = moveHandle(node, "out", [0, 30]);
