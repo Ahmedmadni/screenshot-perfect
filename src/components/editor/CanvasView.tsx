@@ -31,7 +31,7 @@ type Gesture =
   | { mode: "draft-handle"; start: { x: number; y: number }; index: number; kind: "pen" | "curvature" }
   | { mode: "freehand"; points: [number, number][] }
   | { mode: "path-node"; id: string; start: { x: number; y: number }; startLocal: [number, number]; base: ProjectDoc; obj: import("@/editor/model").PathObject; refs: NodeRef[] }
-  | { mode: "path-handle"; id: string; start: { x: number; y: number }; base: ProjectDoc; startLocal: [number, number]; base: ProjectDoc; obj: import("@/editor/model").PathObject; refs: NodeRef[]; side: HandleSide };
+  | { mode: "path-handle"; id: string; start: { x: number; y: number }; startLocal: [number, number]; base: ProjectDoc; obj: import("@/editor/model").PathObject; refs: NodeRef[]; side: HandleSide };
 
 /** Layout for objects drawn from glyph outlines; null means "use live browser text". */
 function glyphLayoutFor(o: TextObject, force: boolean): TextLayout | null {
