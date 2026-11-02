@@ -224,7 +224,7 @@ export function Editor() {
       if ((e.target as HTMLElement).closest("input,textarea,select,[role=dialog]")) return;
       const mod = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
-      if (mod && k === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+      if (mod && k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
       else if (mod && k === "y") { e.preventDefault(); redo(); }
       else if (mod && k === "s") { e.preventDefault(); save(); }
       else if (mod && k === "d" && selected) { e.preventDefault(); addObject({ ...selected, id: uid(), x: selected.x + 20, y: selected.y + 20 }); }
