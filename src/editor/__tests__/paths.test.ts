@@ -125,7 +125,11 @@ describe("Bézier path geometry", () => {
       nodes: [{ x: 20, y: 30, in: [-10, 0], out: [10, 0], type: "symmetric" }],
       closed: false,
     };
-    const result = moveHandles([curved, second], [[0, 0], [1, 0]], "out", [0, 12]);
+    const first: Contour = {
+      nodes: [{ x: 0, y: 0, in: [0, -60], out: [0, 60], type: "smooth" }],
+      closed: false,
+    };
+    const result = moveHandles([first, second], [[0, 0], [1, 0]], "out", [0, 12]);
     expect(result[0]?.nodes[0]?.out).toEqual([0, 72]);
     expect(result[0]?.nodes[0]?.in).toEqual([0, -72]);
     expect(result[1]?.nodes[0]?.out).toEqual([10, 12]);
