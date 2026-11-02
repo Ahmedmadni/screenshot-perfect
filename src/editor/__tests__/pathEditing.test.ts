@@ -1,12 +1,27 @@
 import { describe, expect, it } from "vitest";
 import type { Contour, PathNode, ProjectDoc } from "../model";
 import { createProject } from "../model";
-import { convertNode, convertNodes, createPathObject, deleteNodes, deleteSelectedNodes, moveHandle, moveHandles, moveNodes } from "../paths/edit";
+import {
+  convertNode,
+  convertNodes,
+  createPathObject,
+  deleteNodes,
+  deleteSelectedNodes,
+  moveHandle,
+  moveHandles,
+  moveNodes,
+} from "../paths/edit";
 import { len } from "../paths/geometry";
 import { editorReducer, type EditorState } from "../useEditor";
 import { createHistory } from "../history";
 
-const node = (x: number, y: number, inV: [number, number], out: [number, number], type: PathNode["type"]): PathNode => ({ x, y, in: inV, out, type });
+const node = (
+  x: number,
+  y: number,
+  inV: [number, number],
+  out: [number, number],
+  type: PathNode["type"],
+): PathNode => ({ x, y, in: inV, out, type });
 
 /** Freezes deeply so any in-place mutation by an edit operation throws. */
 function deepFreeze<T>(v: T): T {
@@ -22,11 +37,19 @@ const cross = (a: [number, number], b: [number, number]) => a[0] * b[1] - a[1] *
 function fixture(): Contour[] {
   return deepFreeze([
     {
-      nodes: [node(0, 0, [-20, 0], [20, 0], "smooth"), node(100, 0, [-30, 10], [30, -10], "symmetric"), node(200, 50, [-10, -10], [5, 25], "corner")],
+      nodes: [
+        node(0, 0, [-20, 0], [20, 0], "smooth"),
+        node(100, 0, [-30, 10], [30, -10], "symmetric"),
+        node(200, 50, [-10, -10], [5, 25], "corner"),
+      ],
       closed: false,
     },
     {
-      nodes: [node(0, 100, [0, 0], [40, 0], "smooth"), node(80, 140, [-15, 0], [15, 0], "smooth"), node(160, 100, [-40, 0], [0, 0], "corner")],
+      nodes: [
+        node(0, 100, [0, 0], [40, 0], "smooth"),
+        node(80, 140, [-15, 0], [15, 0], "smooth"),
+        node(160, 100, [-40, 0], [0, 0], "corner"),
+      ],
       closed: true,
     },
   ]);
@@ -35,11 +58,23 @@ function fixture(): Contour[] {
 describe("Bézier editing: multi-node selection", () => {
   it("moves every selected node by the same delta and keeps their handle offsets", () => {
     const src = fixture();
-    const out = moveNodes(src, [[0, 0], [0, 2], [1, 1]], [5, -7]);
+    const out = moveNodes(
+      src,
+      [
+        [0, 0],
+        [0, 2],
+        [1, 1],
+      ],
+      [5, -7],
+    );
     expect([out[0]!.nodes[0]!.x, out[0]!.nodes[0]!.y]).toEqual([5, -7]);
     expect([out[0]!.nodes[2]!.x, out[0]!.nodes[2]!.y]).toEqual([205, 43]);
     expect([out[1]!.nodes[1]!.x, out[1]!.nodes[1]!.y]).toEqual([85, 133]);
-    for (const [c, i] of [[0, 0], [0, 2], [1, 1]] as const) {
+    for (const [c, i] of [
+      [0, 0],
+      [0, 2],
+      [1, 1],
+    ] as const) {
       expect(out[c]!.nodes[i]!.in).toEqual(src[c]!.nodes[i]!.in);
       expect(out[c]!.nodes[i]!.out).toEqual(src[c]!.nodes[i]!.out);
     }
@@ -91,7 +126,16 @@ describe("Bézier editing: handle constraints", () => {
 
   it("applies constraints per node when handles of several contours move together", () => {
     const src = fixture();
-    const out = moveHandles(src, [[0, 0], [0, 1], [1, 1]], "out", [0, 10]);
+    const out = moveHandles(
+      src,
+      [
+        [0, 0],
+        [0, 1],
+        [1, 1],
+      ],
+      "out",
+      [0, 10],
+    );
     const smooth = out[0]!.nodes[0]!;
     expect(smooth.out).toEqual([20, 10]);
     expect(len(smooth.in)).toBeCloseTo(20, 8);
@@ -106,7 +150,16 @@ describe("Bézier editing: handle constraints", () => {
 
   it("independent multi-handle move leaves every opposite handle unchanged", () => {
     const src = fixture();
-    const out = moveHandles(src, [[0, 0], [0, 1]], "out", [0, 10], true);
+    const out = moveHandles(
+      src,
+      [
+        [0, 0],
+        [0, 1],
+      ],
+      "out",
+      [0, 10],
+      true,
+    );
     expect(out[0]!.nodes[0]!.in).toEqual([-20, 0]);
     expect(out[0]!.nodes[1]!.in).toEqual([-30, 10]);
   });
@@ -116,7 +169,15 @@ describe("Bézier editing: zero-length handles", () => {
   it("does not grow a retracted handle during a group handle drag", () => {
     const src = fixture();
     // Node [1,0] has a zero `in` handle; node [1,2] has a zero `out` handle.
-    const out = moveHandles(src, [[1, 0], [1, 2]], "in", [5, 5]);
+    const out = moveHandles(
+      src,
+      [
+        [1, 0],
+        [1, 2],
+      ],
+      "in",
+      [5, 5],
+    );
     expect(out[1]!.nodes[0]).toBe(src[1]!.nodes[0]);
     expect(out[1]!.nodes[2]!.in).toEqual([-35, 5]);
     expect(out[1]!.nodes[2]!.out).toEqual([0, 0]);
@@ -150,7 +211,14 @@ describe("Bézier editing: node type conversion", () => {
   });
 
   it("smooth/symmetric conversion grows handles for a retracted corner node", () => {
-    const ct: Contour = { nodes: [node(0, 0, [0, 0], [0, 0], "corner"), node(90, 0, [0, 0], [0, 0], "corner"), node(180, 0, [0, 0], [0, 0], "corner")], closed: false };
+    const ct: Contour = {
+      nodes: [
+        node(0, 0, [0, 0], [0, 0], "corner"),
+        node(90, 0, [0, 0], [0, 0], "corner"),
+        node(180, 0, [0, 0], [0, 0], "corner"),
+      ],
+      closed: false,
+    };
     for (const type of ["smooth", "symmetric"] as const) {
       const out = convertNode(ct, 1, type).nodes[1]!;
       expect(len(out.in)).toBeGreaterThan(0);
@@ -161,7 +229,14 @@ describe("Bézier editing: node type conversion", () => {
 
   it("converts only the selected nodes of a multi-contour selection", () => {
     const src = fixture();
-    const out = convertNodes(src, [[0, 2], [1, 2]], "symmetric");
+    const out = convertNodes(
+      src,
+      [
+        [0, 2],
+        [1, 2],
+      ],
+      "symmetric",
+    );
     expect(out[0]!.nodes[2]!.type).toBe("symmetric");
     expect(out[1]!.nodes[2]!.type).toBe("symmetric");
     expect(out[0]!.nodes[0]).toBe(src[0]!.nodes[0]);
@@ -180,9 +255,16 @@ describe("Bézier editing: deleting nodes", () => {
 
   it("deletes a selection across contours and keeps other nodes at the same canvas position", () => {
     const path = createPathObject(fixture().map((c) => ({ ...c, nodes: [...c.nodes] })));
-    const abs = (o: typeof path, c: number, i: number) => [o.x + o.contours[c]!.nodes[i]!.x, o.y + o.contours[c]!.nodes[i]!.y];
+    const abs = (o: typeof path, c: number, i: number) => [
+      o.x + o.contours[c]!.nodes[i]!.x,
+      o.y + o.contours[c]!.nodes[i]!.y,
+    ];
     const keep = abs(path, 1, 0);
-    const out = deleteSelectedNodes(path, [[0, 0], [0, 1], [1, 1]]);
+    const out = deleteSelectedNodes(path, [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+    ]);
     // Contour 0 would be left with one node, so it is dropped entirely.
     expect(out.contours).toHaveLength(1);
     expect(out.contours[0]!.nodes).toHaveLength(2);
@@ -220,7 +302,16 @@ describe("Bézier editing: undo and redo", () => {
     // A drag is many replaces followed by one commitFrom at pointer-up.
     let cur = base;
     for (let k = 1; k <= 5; k++) {
-      cur = edit(base, (c) => moveNodes(c, [[0, 1], [1, 2]], [k, k]));
+      cur = edit(base, (c) =>
+        moveNodes(
+          c,
+          [
+            [0, 1],
+            [1, 2],
+          ],
+          [k, k],
+        ),
+      );
       s = editorReducer(s, { type: "replace", doc: cur });
     }
     s = editorReducer(s, { type: "commitFrom", base });
@@ -237,7 +328,10 @@ describe("Bézier editing: undo and redo", () => {
     const d0 = withPath(fixture());
     const d1 = edit(d0, (c) => moveHandles(c, [[0, 0]], "out", [0, 15]));
     const d2 = edit(d1, (c) => convertNodes(c, [[0, 2]], "smooth"));
-    const d3 = { ...d2, objects: d2.objects.map((o) => (o.type === "path" ? deleteSelectedNodes(o, [[1, 1]]) : o)) };
+    const d3 = {
+      ...d2,
+      objects: d2.objects.map((o) => (o.type === "path" ? deleteSelectedNodes(o, [[1, 1]]) : o)),
+    };
     let s: EditorState = { h: createHistory(d0), lastAt: 0 };
     for (const d of [d1, d2, d3]) s = editorReducer(s, { type: "commit", doc: d }, 0);
     expect(s.h.present).toBe(d3);
