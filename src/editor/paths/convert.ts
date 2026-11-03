@@ -5,7 +5,8 @@
 import { parsePath, type Seg } from "../glyphs/svgpath";
 import type { Mat } from "../glyphs/scene";
 import { shapePath, type Contour, type PathNode, type PathObject, type ShapeObject, type TextObject } from "../model";
-import type { PlacedGlyph, TextLayout } from "../glyphs/layout";
+import { glyphStrokePx, type PlacedGlyph, type TextLayout } from "../glyphs/layout";
+import { mulMat } from "../glyphs/affine";
 import { textPaths } from "../glyphs/scene";
 import { dist, len, type Vec } from "./geometry";
 import { createPathObject } from "./edit";
