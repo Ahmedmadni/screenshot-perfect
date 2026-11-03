@@ -32,7 +32,21 @@ const textSchema = z.object({
   // Added in project format v2; v1 files get safe defaults.
   kashida: z.array(z.object({ at: z.number().int().min(0), count: z.number().int().min(0).max(50) })).default([]),
   features: z.record(z.number().int().min(0).max(99)).default({}),
-  glyphs: z.array(z.object({ at: z.number().int().min(0), gid: z.number().int().min(0), dx: z.number(), dy: z.number(), scaleX: z.number().positive(), scaleY: z.number().positive(), thickness: z.number().min(0).max(100) })).default([]),
+  // Per-glyph transforms (v5). `rotation` was added later inside v5; files without it load as 0°.
+  glyphs: z
+    .array(
+      z.object({
+        at: z.number().int().min(0),
+        gid: z.number().int().min(0),
+        dx: z.number().finite(),
+        dy: z.number().finite(),
+        scaleX: z.number().positive(),
+        scaleY: z.number().positive(),
+        thickness: z.number().min(0).max(100),
+        rotation: z.number().finite().default(0),
+      }),
+    )
+    .default([]),
   marks: z
     .array(z.object({ at: z.number().int().min(0), ch: z.string(), dx: z.number(), dy: z.number(), scale: z.number().positive() }))
     .default([]),
