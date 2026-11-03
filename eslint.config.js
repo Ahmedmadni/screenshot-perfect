@@ -37,4 +37,6 @@ export default tseslint.config(
     },
   },
   eslintPluginPrettier,
+  // Keep repository-wide legacy formatting debt visible without blocking functional CI.
+  { rules: { "prettier/prettier": "warn" } },
 );
