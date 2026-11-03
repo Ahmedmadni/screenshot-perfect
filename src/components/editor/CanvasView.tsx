@@ -335,6 +335,8 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
   const selected = doc.objects.find((o) => o.id === selectedId && !o.hidden);
   const markObj = markEdit ? (doc.objects.find((o) => o.id === markEdit.objectId && o.type === "text" && !o.hidden) as TextObject | undefined) : undefined;
   const markLayout = markObj ? glyphLayoutFor(markObj, true) : null;
+  const glyphObj = glyphEdit ? (doc.objects.find((o) => o.id === glyphEdit.objectId && o.type === "text" && !o.hidden) as TextObject | undefined) : undefined;
+  const glyphLayout = glyphObj ? glyphLayoutFor(glyphObj, true) : null;
   const hs = 10 / zoom;
   const pad = 80;
 
@@ -442,6 +444,9 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
         }
         if (editor.tool === "node") return;
         if (markEdit) return setMarkEdit({ ...markEdit, at: null });
+        // Letter mode: first click outside clears the picked letters, the next one leaves the mode.
+        if (glyphEdit?.refs.length) return setGlyphEdit({ ...glyphEdit, refs: [] });
+        if (glyphEdit) setGlyphEdit(null);
         setSelectedId(null);
       }}
       onDoubleClick={(e) => {
@@ -469,6 +474,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
             {doc.objects.map((o) => {
               if (o.hidden) return null;
               const inMarkMode = o.id === markObj?.id;
+              const inGlyphMode = o.id === glyphObj?.id;
               return (
                 <g
                   key={o.id}
@@ -483,6 +489,10 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                     if (inMarkMode) {
                       e.stopPropagation();
                       setMarkEdit({ objectId: o.id, at: null });
+                    } else if (inGlyphMode) {
+                      // Empty space inside the text (letters handle their own clicks).
+                      e.stopPropagation();
+                      if (!e.shiftKey && !e.ctrlKey && !e.metaKey) setGlyphEdit({ objectId: o.id, refs: [] });
                     } else begin(e, "move", o);
                   }}
                   onDoubleClick={(e) => {
@@ -498,12 +508,12 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                         editor.setDoc({ ...doc, objects: doc.objects.map((item) => item.id === o.id ? updated : item) });
                         editor.setNodeSel([[hit.contour, result.index]]);
                       }
-                    } else if (o.type === "text" && !inMarkMode) onEditText(o.id);
+                    } else if (o.type === "text" && !inMarkMode && !inGlyphMode) onEditText(o.id);
                   }}
-                  style={{ cursor: inMarkMode ? "default" : o.locked ? "not-allowed" : editor.tool === "node" ? "crosshair" : "move" }}
+                  style={{ cursor: inMarkMode || inGlyphMode ? "default" : o.locked ? "not-allowed" : editor.tool === "node" ? "crosshair" : "move" }}
                   data-object-id={o.id}
                 >
-                  <ObjectShape o={o} forceGlyph={inMarkMode || glyphEdit?.objectId === o.id} selectedGlyph={glyphEdit?.objectId === o.id ? glyphEdit : null} onGlyphPointerDown={beginGlyph} />
+                  <ObjectShape o={o} forceGlyph={inMarkMode || inGlyphMode} interactiveGlyphs={inGlyphMode} onGlyphPointerDown={beginGlyph} />
                 </g>
               );
             })}
@@ -547,7 +557,10 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                 }))}
               </g>
             )}
-            {selected && !markObj && editor.tool !== "node" && <SelectionBox o={selected} hs={hs} zoom={zoom} onHandle={begin} />}
+            {selected && !markObj && !glyphObj && editor.tool !== "node" && <SelectionBox o={selected} hs={hs} zoom={zoom} onHandle={begin} />}
+            {glyphObj && glyphLayout && glyphEdit && (
+              <GlyphOverlay o={glyphObj} layout={glyphLayout} refs={glyphEdit.refs} zoom={zoom} onHandle={beginGlyphHandle} />
+            )}
             {markObj && markLayout && (
               <MarkOverlay o={markObj} layout={markLayout} selectedAt={markEdit?.at ?? null} zoom={zoom} onPick={beginMark} />
             )}
@@ -558,7 +571,63 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
   );
 }
 
-function ObjectShape({ o, forceGlyph, selectedGlyph, onGlyphPointerDown }: { o: EditorObject; forceGlyph: boolean; selectedGlyph: { at: number; gid: number } | null; onGlyphPointerDown: (e: RPointerEvent, o: TextObject, at: number, gid: number) => void }) {
+/**
+ * Letter-mode overlay in document space: a dashed frame around the text, a
+ * frame around every picked letter, and — for a single picked letter — corner
+ * handles (independent width/height, Shift = proportional) and a rotation
+ * handle (Shift = 15° steps).
+ */
+function GlyphOverlay({ o, layout, refs, zoom, onHandle }: {
+  o: TextObject;
+  layout: TextLayout;
+  refs: GlyphRef[];
+  zoom: number;
+  onHandle: (e: RPointerEvent, mode: "glyph-scale" | "glyph-rotate", o: TextObject, ref: GlyphRef, centre: [number, number]) => void;
+}) {
+  const om = objectMatrix(o);
+  const toDocPt = (p: [number, number]) => applyMat(om, p[0], p[1]);
+  const sw = 1.5 / zoom;
+  const hs = 9 / zoom;
+  const objCorners = ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sy]) => toDocPt([(sx * layout.boxWidth) / 2, (sy * layout.boxHeight) / 2]));
+  const frames = refs.flatMap((r) => {
+    const g = findGlyph(layout, r);
+    const corners = g && glyphCorners(g);
+    return g && corners ? [{ r, g, corners }] : [];
+  });
+  const primary = refs.length === 1 ? frames[0] : undefined;
+  const poly = (pts: [number, number][]) => pts.map((p) => p.join(",")).join(" ");
+  return (
+    <g data-glyph-overlay="">
+      <polygon points={poly(objCorners)} fill="none" stroke="var(--selection)" strokeWidth={1 / zoom} strokeDasharray={`${4 / zoom} ${3 / zoom}`} pointerEvents="none" />
+      {frames.map(({ r, corners }) => (
+        <polygon key={`${r.at}:${r.gid}`} points={poly(corners.map(toDocPt))} fill="color-mix(in oklab, var(--selection) 10%, transparent)" stroke="var(--selection)" strokeWidth={sw} pointerEvents="none" data-glyph-frame={`${r.at}:${r.gid}`} />
+      ))}
+      {primary && !o.locked && (() => {
+        const local = primary.corners;
+        const c: [number, number] = [(local[0]![0] + local[2]![0]) / 2, (local[0]![1] + local[2]![1]) / 2];
+        const d = local.map(toDocPt);
+        const cd = toDocPt(c);
+        // Top edge = font-units top (y up), i.e. corners 0 and 1.
+        const top: [number, number] = [(d[0]![0] + d[1]![0]) / 2, (d[0]![1] + d[1]![1]) / 2];
+        const len = Math.hypot(top[0] - cd[0], top[1] - cd[1]) || 1;
+        const rot: [number, number] = [top[0] + ((top[0] - cd[0]) / len) * 26 / zoom, top[1] + ((top[1] - cd[1]) / len) * 26 / zoom];
+        return (
+          <>
+            <line x1={top[0]} y1={top[1]} x2={rot[0]} y2={rot[1]} stroke="var(--selection)" strokeWidth={sw} pointerEvents="none" />
+            <circle cx={rot[0]} cy={rot[1]} r={hs / 1.5} fill="var(--card)" stroke="var(--selection)" strokeWidth={sw} style={{ cursor: "grab" }}
+              onPointerDown={(e) => onHandle(e, "glyph-rotate", o, primary.r, c)} aria-label="Rotate letter" data-glyph-handle="rotate" />
+            {d.map((p, i) => (
+              <rect key={i} x={p[0] - hs / 2} y={p[1] - hs / 2} width={hs} height={hs} fill="var(--card)" stroke="var(--selection)" strokeWidth={sw} style={{ cursor: "nwse-resize" }}
+                onPointerDown={(e) => onHandle(e, "glyph-scale", o, primary.r, c)} aria-label="Resize letter" data-glyph-handle={`corner-${i}`} />
+            ))}
+          </>
+        );
+      })()}
+    </g>
+  );
+}
+
+function ObjectShape({ o, forceGlyph, interactiveGlyphs, onGlyphPointerDown }: { o: EditorObject; forceGlyph: boolean; interactiveGlyphs: boolean; onGlyphPointerDown: (e: RPointerEvent, o: TextObject, at: number, gid: number) => void }) {
   if (o.type === "shape") {
     const { width, height } = o;
     return (
