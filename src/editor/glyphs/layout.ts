@@ -13,6 +13,7 @@ import bidiFactory from "bidi-js";
 import { applyKashida, isMarkChar } from "../calligraphy/kashida";
 import { featureStrings } from "../calligraphy/features";
 import type { TextObject } from "../model";
+import { applyMat, invertMat, mulMat, type Mat } from "./affine";
 
 export type HbModule = typeof HB;
 
@@ -38,13 +39,53 @@ export interface PlacedGlyph {
   gid: number;
   /** Original text index of the glyph's cluster (-1 for inserted tatweel). */
   src: number;
-  /** Outline in font units, y up. Drawn with matrix(k 0 0 -k tx ty) in object-local px. */
+  /** Outline in font units, y up. Drawn with `m` into object-local px. */
   d: string;
+  /** Font-unit → px factor (includes diacritic scaling). */
   k: number;
+  /** Translation part of `m` (kept for convenience). */
   tx: number;
   ty: number;
+  /** Full affine placement: font units → object-local px (includes per-glyph scale and rotation). */
+  m: Mat;
+  /** Outline extents in font units (x, y = bearing; h is negative, y up). Null for empty glyphs. */
+  fext: Box | null;
   mark?: { at: number; ch: string; adjusted: boolean; box: Box };
-  editAt: number; sx: number; sy: number; thickness: number;
+  /** Original text index used to address this glyph for editing (-1 = not editable). */
+  editAt: number;
+  sx: number;
+  sy: number;
+  rotation: number;
+  /** Added outline in px. */
+  thickness: number;
+}
+
+/** Outline stroke (px) a glyph is drawn with: the widest of synthetic bold, text outline and glyph thickness. */
+export function glyphStrokePx(o: Pick<TextObject, "strokeWidth">, layout: Pick<TextLayout, "boldStroke">, g: Pick<PlacedGlyph, "thickness">): number {
+  return Math.max(layout.boldStroke, o.strokeWidth, g.thickness, 0);
+}
+
+/** Matrix that places a glyph with a given centre (object px), scale and rotation. */
+export function glyphMatrix(k: number, cx: number, cy: number, centre: [number, number], sx: number, sy: number, rotationDeg: number): Mat {
+  const r = (rotationDeg * Math.PI) / 180;
+  const cos = Math.cos(r);
+  const sin = Math.sin(r);
+  const a = k * sx;
+  const d = -k * sy;
+  const l: [number, number, number, number] = [a * cos, a * sin, -d * sin, d * cos];
+  return [l[0], l[1], l[2], l[3], centre[0] - (l[0] * cx + l[2] * cy), centre[1] - (l[1] * cx + l[3] * cy)];
+}
+
+/** Object-local polygon (4 corners) of a glyph's outline box, after its full transform. */
+export function glyphCorners(g: Pick<PlacedGlyph, "m" | "fext">): [number, number][] | null {
+  const e = g.fext;
+  if (!e) return null;
+  return [
+    applyMat(g.m, e.x, e.y),
+    applyMat(g.m, e.x + e.w, e.y),
+    applyMat(g.m, e.x + e.w, e.y + e.h),
+    applyMat(g.m, e.x, e.y + e.h),
+  ];
 }
 
 export interface TextLayout {
