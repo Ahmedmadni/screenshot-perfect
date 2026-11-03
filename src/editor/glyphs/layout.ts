@@ -213,7 +213,17 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
           const gid = g.codepoint;
           const ch = line[g.cluster] ?? "";
           if (gid === 0 && !/\s/.test(ch)) missing.add(ch);
-          const pg: PlacedGlyph = { gid, src: map[lineStart + g.cluster] ?? -1, d: sf.glyphPath(gid), k, tx: (pen + (g.xOffset ?? 0)) * k, ty: -(g.yOffset ?? 0) * k, editAt: map[lineStart + g.cluster] ?? -1, sx: 1, sy: 1, thickness: 0 };
+          const src = map[lineStart + g.cluster] ?? -1;
+          const ext = font.glyphExtents(gid);
+          const fext = ext && (ext.width || ext.height) ? { x: ext.xBearing, y: ext.yBearing, w: ext.width, h: ext.height } : null;
+          const cx = fext ? fext.x + fext.w / 2 : 0;
+          const cy = fext ? fext.y + fext.h / 2 : 0;
+          const pg: PlacedGlyph = {
+            gid, src, d: sf.glyphPath(gid), k,
+            tx: (pen + (g.xOffset ?? 0)) * k, ty: -(g.yOffset ?? 0) * k,
+            m: [k, 0, 0, -k, 0, 0], fext,
+            editAt: src, sx: 1, sy: 1, rotation: 0, thickness: 0,
+          };
           const li = markOf.get(gi);
           if (li !== undefined) {
             markCount++;
@@ -221,34 +231,31 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
             const adj = orig >= 0 ? adjustments.get(orig) : undefined;
             const ok = !!adj && adj.ch === line[li];
             if (ok) matched.add(orig);
-            const ext = font.glyphExtents(gid) ?? { xBearing: 0, yBearing: 0, width: 0, height: 0 };
-            const cx = ext.xBearing + ext.width / 2;
-            const cy = ext.yBearing + ext.height / 2;
-            const m = ok ? adj!.scale : 1;
-            const km = k * m;
-            pg.tx += k * cx * (1 - m) + (ok ? adj!.dx * o.fontSize : 0);
-            pg.ty += -k * cy * (1 - m) + (ok ? adj!.dy * o.fontSize : 0);
+            const e = fext ?? { x: 0, y: 0, w: 0, h: 0 };
+            const s = ok ? adj!.scale : 1;
+            const km = k * s;
+            pg.tx += k * cx * (1 - s) + (ok ? adj!.dx * o.fontSize : 0);
+            pg.ty += -k * cy * (1 - s) + (ok ? adj!.dy * o.fontSize : 0);
             pg.k = km;
-            const x0 = pg.tx + km * ext.xBearing;
-            const y0 = pg.ty - km * ext.yBearing;
-            pg.mark = { at: orig, ch: line[li]!, adjusted: ok, box: { x: x0, y: y0, w: km * ext.width, h: -km * ext.height } };
-          }
-          const glyphEdit = pg.src >= 0 ? glyphAdjustments.get(`${pg.src}:${gid}`) : undefined;
-          if (glyphEdit) {
-            // Scale around the outline centre rather than the font origin so
-            // resizing a glyph does not make it drift along the baseline.
-            const ext = font.glyphExtents(gid);
-            if (ext) {
-              const cx = ext.xBearing + ext.width / 2;
-              const cy = ext.yBearing + ext.height / 2;
-              pg.tx += k * cx * (1 - glyphEdit.scaleX);
-              pg.ty -= k * cy * (1 - glyphEdit.scaleY);
+            pg.m = [km, 0, 0, -km, pg.tx, pg.ty];
+            pg.mark = { at: orig, ch: line[li]!, adjusted: ok, box: { x: pg.tx + km * e.x, y: pg.ty - km * e.y, w: km * e.w, h: -km * e.h } };
+          } else {
+            pg.m = [k, 0, 0, -k, pg.tx, pg.ty];
+            const edit = src >= 0 ? glyphAdjustments.get(`${src}:${gid}`) : undefined;
+            if (edit) {
+              // Scale and rotate about the outline centre so the glyph does not
+              // drift along the baseline; the translation moves that centre.
+              const unedited = pg.m;
+              const centre: [number, number] = [pg.tx + k * cx + edit.dx * o.fontSize, pg.ty - k * cy + edit.dy * o.fontSize];
+              pg.m = glyphMatrix(k, cx, cy, centre, edit.scaleX, edit.scaleY, edit.rotation ?? 0);
+              pg.tx = pg.m[4];
+              pg.ty = pg.m[5];
+              pg.sx = edit.scaleX;
+              pg.sy = edit.scaleY;
+              pg.rotation = edit.rotation ?? 0;
+              pg.thickness = edit.thickness;
+              baseEdits.set(pg, mulMat(pg.m, invertMat(unedited)));
             }
-            pg.tx += glyphEdit.dx * o.fontSize;
-            pg.ty += glyphEdit.dy * o.fontSize;
-            pg.sx = glyphEdit.scaleX;
-            pg.sy = glyphEdit.scaleY;
-            pg.thickness = glyphEdit.thickness;
           }
           placed.push(pg);
           pen += g.xAdvance ?? 0;
@@ -259,6 +266,7 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
         });
       }
     }
+    attachMarksToEditedBases(o.text, placed, baseEdits);
     lineGlyphs.push({ glyphs: placed, width: pen * k });
     lineStart += line.length + 1;
   }
@@ -273,6 +281,7 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
     for (const g of l.glyphs) {
       g.tx += x0;
       g.ty += y;
+      g.m = [g.m[0], g.m[1], g.m[2], g.m[3], g.tx, g.ty];
       if (g.mark) {
         g.mark.box.x += x0;
         g.mark.box.y += y;
@@ -281,25 +290,23 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
     }
   });
 
-  // Expand the centred object bounds to include every transformed outline.
-  // HarfBuzz extents are in font units (y-up); SVG/object coordinates are y-down.
+  // Expand the centred object bounds to include every transformed outline
+  // (rotation included) plus its outline stroke.
   let minX = -boxWidth / 2;
   let maxX = boxWidth / 2;
   let minY = -boxHeight / 2;
   let maxY = boxHeight / 2;
-  const boldOutset = o.fontWeight >= 600 && sf.syntheticBold ? syntheticBoldStroke(o.fontSize) / 2 : 0;
+  const boldStroke = o.fontWeight >= 600 && sf.syntheticBold ? syntheticBoldStroke(o.fontSize) : 0;
   for (const g of glyphs) {
-    const ext = font.glyphExtents(g.gid);
-    if (!ext) continue;
-    const x1 = g.tx + g.k * g.sx * ext.xBearing;
-    const x2 = g.tx + g.k * g.sx * (ext.xBearing + ext.width);
-    const y1 = g.ty - g.k * g.sy * ext.yBearing;
-    const y2 = g.ty - g.k * g.sy * (ext.yBearing + ext.height);
-    const outset = Math.max(boldOutset, (g.k * g.thickness) / 2, 0);
-    minX = Math.min(minX, Math.min(x1, x2) - outset);
-    maxX = Math.max(maxX, Math.max(x1, x2) + outset);
-    minY = Math.min(minY, Math.min(y1, y2) - outset);
-    maxY = Math.max(maxY, Math.max(y1, y2) + outset);
+    const corners = glyphCorners(g);
+    if (!corners) continue;
+    const outset = glyphStrokePx(o, { boldStroke }, g) / 2;
+    for (const [x, y] of corners) {
+      minX = Math.min(minX, x - outset);
+      maxX = Math.max(maxX, x + outset);
+      minY = Math.min(minY, y - outset);
+      maxY = Math.max(maxY, y + outset);
+    }
   }
   boxWidth = Math.max(boxWidth, 2 * Math.max(Math.abs(minX), Math.abs(maxX)));
   boxHeight = Math.max(boxHeight, 2 * Math.max(Math.abs(minY), Math.abs(maxY)));
@@ -309,8 +316,37 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
     boxWidth,
     boxHeight,
     missing: [...missing],
-    boldStroke: o.fontWeight >= 600 && sf.syntheticBold ? syntheticBoldStroke(o.fontSize) : 0,
+    boldStroke,
     markCount,
     unmatchedAdjustments: o.marks.filter((m) => !matched.has(m.at)).length,
   };
+}
+
+/**
+ * Keeps diacritics attached to their letter: when the base glyph was moved,
+ * scaled or rotated, the mark's centre follows the same transform (the mark
+ * itself keeps its own size and orientation, plus any independent adjustment).
+ */
+function attachMarksToEditedBases(text: string, placed: PlacedGlyph[], edits: Map<PlacedGlyph, Mat>) {
+  if (!edits.size) return;
+  const bases = placed.filter((g) => !g.mark && g.editAt >= 0);
+  for (const g of placed) {
+    if (!g.mark || g.mark.at < 0) continue;
+    let baseAt = g.mark.at - 1;
+    while (baseAt >= 0 && isMarkChar(text[baseAt] ?? "")) baseAt--;
+    if (baseAt < 0) continue;
+    // Exact letter, else the ligature/cluster glyph that covers it (nearest preceding start).
+    let base: PlacedGlyph | undefined;
+    for (const b of bases) if (b.editAt <= baseAt && (!base || b.editAt > base.editAt)) base = b;
+    const delta = base ? edits.get(base) : undefined;
+    if (!delta) continue;
+    const e = g.fext ?? { x: 0, y: 0, w: 0, h: 0 };
+    const [px, py] = applyMat(g.m, e.x + e.w / 2, e.y + e.h / 2);
+    const [qx, qy] = applyMat(delta, px, py);
+    g.tx += qx - px;
+    g.ty += qy - py;
+    g.m = [g.m[0], g.m[1], g.m[2], g.m[3], g.tx, g.ty];
+    g.mark.box.x += qx - px;
+    g.mark.box.y += qy - py;
+  }
 }
