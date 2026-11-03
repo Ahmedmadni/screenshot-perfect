@@ -92,7 +92,9 @@ describe("Bézier path geometry", () => {
     expect(paths[0]?.contours).toHaveLength(2);
     expect(paths[1]?.contours).toHaveLength(1);
     expect(paths[0]?.x).not.toBeCloseTo(paths[1]?.x ?? 0);
-    expect(paths[1]?.strokeWidth).toBeCloseTo(2);
+    // Text outline (2 px) wins over glyph thickness (1 px); converted contours are
+    // in px after the object's own stretch, so the outline is scaled by it too.
+    expect(paths[1]?.strokeWidth).toBeCloseTo(2 * Math.sqrt(1.2 * 0.8), 3);
     expect(paths[1]?.stroke).toBe(text.color);
     expect(paths[1]?.fillRule).toBe("nonzero");
   });
