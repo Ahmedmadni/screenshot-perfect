@@ -3,6 +3,7 @@ import { commit, createHistory, redo, replace, undo, type History } from "./hist
 import type { EditorObject, PathNode, ProjectDoc } from "./model";
 import type { CurvePoint } from "./paths/fit";
 import type { NodeRef } from "./paths/edit";
+import type { GlyphRef } from "./glyphs/glyphEdit";
 
 export interface EditorState {
   h: History<ProjectDoc>;
@@ -41,8 +42,15 @@ export function editorReducer(s: EditorState, a: EditorAction, now = Date.now())
 
 const reducer = (s: EditorState, a: EditorAction) => editorReducer(s, a);
 
-/** Diacritic editing mode: which text object, and which mark (original text index) is selected. */
-export interface GlyphEdit { objectId: string; at: number; gid: number; }
+/**
+ * Letter (glyph) editing mode for one text object. `refs` are the selected
+ * glyphs (empty = mode on, nothing picked); the last one is the primary glyph
+ * whose values the panel shows and whose on-canvas handles are drawn.
+ */
+export interface GlyphEdit {
+  objectId: string;
+  refs: GlyphRef[];
+}
 
 export interface MarkEdit {
   objectId: string;
@@ -79,6 +87,18 @@ export function useEditor(initial: ProjectDoc) {
   useEffect(() => {
     if (markEdit && (markEdit.objectId !== selectedId || !markObjectAlive)) setMarkEdit(null);
   }, [markEdit, selectedId, markObjectAlive]);
+  // Same for letter editing.
+  const glyphObjectAlive = !!glyphEdit && doc.objects.some((o) => o.id === glyphEdit.objectId && o.type === "text" && !o.hidden);
+  useEffect(() => {
+    if (glyphEdit && (glyphEdit.objectId !== selectedId || !glyphObjectAlive)) setGlyphEdit(null);
+  }, [glyphEdit, selectedId, glyphObjectAlive]);
+  // The two on-canvas modes are exclusive.
+  useEffect(() => {
+    if (markEdit) setGlyphEdit(null);
+  }, [markEdit]);
+  useEffect(() => {
+    if (glyphEdit) setMarkEdit(null);
+  }, [glyphEdit]);
 
   // Node editing needs a visible, unlocked path; otherwise fall back to the selection tool.
   const selectedObj = doc.objects.find((o) => o.id === selectedId);
