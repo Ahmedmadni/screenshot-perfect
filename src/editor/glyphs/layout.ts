@@ -152,6 +152,7 @@ export function layoutText(sf: ShapingFont, o: TextObject): TextLayout {
 
   for (const line of lines) {
     const placed: PlacedGlyph[] = [];
+    const baseEdits = new Map<PlacedGlyph, Mat>();
     let pen = 0;
     if (line.length) {
       const { levels } = getBidi().getEmbeddingLevels(line, "auto");
