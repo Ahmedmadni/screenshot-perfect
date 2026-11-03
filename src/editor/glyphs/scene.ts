@@ -5,9 +5,10 @@
  */
 import { shapePath, type FillRule, type LineCap, type LineJoin, type PathObject, type ProjectDoc, type TextObject } from "../model";
 import { contoursToD } from "../paths/geometry";
-import type { TextLayout } from "./layout";
+import { glyphStrokePx, type TextLayout } from "./layout";
+import type { Mat } from "./affine";
 
-export type Mat = [number, number, number, number, number, number];
+export type { Mat } from "./affine";
 
 export interface ScenePath {
   d: string;
@@ -66,13 +67,17 @@ const color = (c: string) => (c === "transparent" ? null : c);
 export function textPaths(o: TextObject, layout: TextLayout): ScenePath[] {
   return layout.glyphs
     .filter((g) => g.d)
-    .map((g) => ({
-      d: g.d,
-      m: [g.k * g.sx, 0, 0, -g.k * g.sy, g.tx, g.ty] as Mat,
-      fill: color(o.color),
-      stroke: layout.boldStroke || o.strokeWidth > 0 || g.thickness > 0 ? color(o.color) : null,
-      strokeWidth: Math.max(layout.boldStroke ? layout.boldStroke / g.k : 0, o.strokeWidth / Math.max(g.k, 0.0001), g.thickness / Math.max(g.k, 0.0001)),
-    }));
+    .map((g) => {
+      const px = glyphStrokePx(o, layout, g);
+      return {
+        d: g.d,
+        m: g.m,
+        fill: color(o.color),
+        stroke: px > 0 ? color(o.color) : null,
+        // Path units are font units; the glyph matrix scales them by k.
+        strokeWidth: px / Math.max(g.k, 0.0001),
+      };
+    });
 }
 
 export function buildScene(doc: ProjectDoc, layoutFor: (o: TextObject) => TextLayout): Scene {

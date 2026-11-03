@@ -5,7 +5,8 @@
 import { parsePath, type Seg } from "../glyphs/svgpath";
 import type { Mat } from "../glyphs/scene";
 import { shapePath, type Contour, type PathNode, type PathObject, type ShapeObject, type TextObject } from "../model";
-import type { PlacedGlyph, TextLayout } from "../glyphs/layout";
+import { glyphStrokePx, type PlacedGlyph, type TextLayout } from "../glyphs/layout";
+import { mulMat } from "../glyphs/affine";
 import { textPaths } from "../glyphs/scene";
 import { dist, len, type Vec } from "./geometry";
 import { createPathObject } from "./edit";
@@ -93,26 +94,26 @@ export function textToPath(o: TextObject, layout: TextLayout): PathObject {
  * Converts each shaped glyph to its own editable path object. A glyph may
  * contain several contours (counters/holes); those contours stay together,
  * while neighbouring glyphs remain independently selectable and editable.
+ * Per-glyph scale/rotation and diacritic adjustments come from the glyph's
+ * full layout matrix, so the paths land exactly where the text was drawn.
  */
 export function glyphsToPaths(o: TextObject, layout: TextLayout): PathObject[] {
+  const objScale: Mat = [o.scaleX, 0, 0, o.scaleY, 0, 0];
+  // Contours are in px after the matrix, so the outline is given in px too
+  // (scaled like the drawing by the object's own stretch).
+  const strokeScale = Math.sqrt(Math.abs(o.scaleX * o.scaleY));
   return layout.glyphs
     .filter((g) => g.d)
     .map((g: PlacedGlyph, index) => {
-      const contours = segsToContours(parsePath(g.d), [
-        o.scaleX * g.k * g.sx, 0, 0, -o.scaleY * g.k * g.sy,
-        o.scaleX * g.tx, o.scaleY * g.ty,
-      ]);
+      const contours = segsToContours(parsePath(g.d), mulMat(objScale, g.m));
+      const px = glyphStrokePx(o, layout, g) * strokeScale;
       const local = createPathObject(contours, {
         fill: o.color,
-        stroke: g.thickness > 0 || layout.boldStroke > 0 || o.strokeWidth > 0 ? o.color : "transparent",
-        strokeWidth: Math.max(
-          layout.boldStroke / Math.max(g.k, 0.0001),
-          o.strokeWidth / Math.max(g.k, 0.0001),
-          g.thickness / Math.max(g.k, 0.0001),
-        ),
+        stroke: px > 0 ? o.color : "transparent",
+        strokeWidth: Math.round(px * 1000) / 1000,
         lineJoin: "round",
         fillRule: "nonzero",
-        name: `${o.name} · glyph ${g.editAt >= 0 ? g.editAt + 1 : index + 1}`,
+        name: `${o.name} · ${g.mark ? "diacritic" : "glyph"} ${g.editAt >= 0 ? g.editAt + 1 : index + 1}`,
       });
       return placeLocal(local, o);
     });

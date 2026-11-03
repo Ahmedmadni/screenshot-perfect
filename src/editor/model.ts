@@ -30,14 +30,28 @@ export interface Kashida {
 }
 
 /**
+ * Independent transform of one shaped glyph (a HarfBuzz output glyph). `at` is
+ * the original-text index of its cluster, `gid` the glyph ID. Offsets are in em,
+ * y grows downward; scale and rotation (degrees, clockwise) act about the
+ * outline's centre; thickness is an added outline in px.
+ */
+export interface GlyphAdjust {
+  at: number;
+  gid: number;
+  dx: number;
+  dy: number;
+  scaleX: number;
+  scaleY: number;
+  thickness: number;
+  rotation: number;
+}
+
+/**
  * Independent placement of one diacritic. `at` is the UTF-16 index of the mark
  * character in the original text, `ch` the mark itself (used to detect stale
  * entries after the text is edited). Offsets are in em (fractions of font size),
  * y grows downward.
  */
-export interface GlyphAdjust {
-  at: number; gid: number; dx: number; dy: number; scaleX: number; scaleY: number; thickness: number;
-}
 
 export interface MarkAdjust {
   at: number;

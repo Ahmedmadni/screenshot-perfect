@@ -1,15 +1,24 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
-import { displayText, lineAnchorX, lineOffsets, needsGlyphEngine, objectSize, shapePath, svgTextAnchor, type Contour, type EditorObject, type PathNode, type ProjectDoc, type TextObject } from "@/editor/model";
+import { displayText, lineAnchorX, lineOffsets, needsGlyphEngine, objectSize, shapePath, svgTextAnchor, type Contour, type EditorObject, type GlyphAdjust, type PathNode, type ProjectDoc, type TextObject } from "@/editor/model";
 import { featureCss } from "@/editor/calligraphy/features";
 import { getMarkAdjust, setMarkAdjust } from "@/editor/calligraphy/marks";
 import { glyphEngine } from "@/editor/glyphs/engine";
-import type { TextLayout } from "@/editor/glyphs/layout";
+import { glyphCorners, type PlacedGlyph, type TextLayout } from "@/editor/glyphs/layout";
+import { applyMat, invertMat } from "@/editor/glyphs/affine";
+import { objectMatrix } from "@/editor/glyphs/scene";
+import { getGlyphAdjust, moveGlyphs, neutralAdjust, patchGlyphs, sameRef, toggleRef, type GlyphRef } from "@/editor/glyphs/glyphEdit";
 import { useGlyphEngineVersion } from "@/editor/glyphs/useGlyphEngine";
 import type { Editor } from "@/editor/useEditor";
 import { GlyphText } from "./GlyphText";
 import { contoursToD, dist, nearestOnPath } from "@/editor/paths/geometry";
 import { createPathObject, deleteSelectedNodes, insertNode, moveHandles, moveNodes, normalizePath, scaleContours, toLocalPoint, toLocalVec, type HandleSide, type NodeRef } from "@/editor/paths/edit";
 import { curvatureNodes, fitCurve, cubicsToNodes } from "@/editor/paths/fit";
+
+/** Doc point → object-local px (inverse of translate · rotate · scale). */
+const docToLocal = (o: TextObject, p: { x: number; y: number }): [number, number] => applyMat(invertMat(objectMatrix(o)), p.x, p.y);
+
+/** Placed glyph (base letters only) addressed by a reference. */
+const findGlyph = (layout: TextLayout, r: GlyphRef): PlacedGlyph | undefined => layout.glyphs.find((g) => !g.mark && g.editAt === r.at && g.gid === r.gid);
 
 interface Props {
   editor: Editor;
@@ -25,7 +34,9 @@ interface Props {
 type Gesture =
   | { mode: "move"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: EditorObject }
   | { mode: "resize" | "rotate"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: EditorObject }
-  | { mode: "glyph"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: TextObject; at: number; gid: number; dx: number; dy: number }
+  | { mode: "glyph"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: TextObject; refs: GlyphRef[] }
+  /** Corner drag (width/height) or rotation of the primary glyph, about its centre in object-local px. */
+  | { mode: "glyph-scale" | "glyph-rotate"; id: string; base: ProjectDoc; obj: TextObject; ref: GlyphRef; centre: [number, number]; startLocal: [number, number]; adj: GlyphAdjust }
   | { mode: "mark"; id: string; start: { x: number; y: number }; base: ProjectDoc; obj: TextObject; at: number; ch: string; dx: number; dy: number }
   | { mode: "pan"; sx: number; sy: number; left: number; top: number }
   | { mode: "draft-handle"; start: { x: number; y: number }; index: number; kind: "pen" | "curvature" }
@@ -131,16 +142,37 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
     }
     const cur = docRef.current;
     if (g.mode === "glyph") {
+      // All selected glyphs move by the same object-local offset.
       const o = g.obj;
-      const r = (-o.rotation * Math.PI) / 180;
-      const ddx = p.x - g.start.x;
-      const ddy = p.y - g.start.y;
-      const lx = ddx * Math.cos(r) - ddy * Math.sin(r);
-      const ly = ddx * Math.sin(r) + ddy * Math.cos(r);
-      const baseObj = g.base.objects.find((x) => x.id === g.id) as TextObject;
-      const prior = baseObj.glyphs.find((x) => x.at === g.at && x.gid === g.gid);
-      const edit = { at: g.at, gid: g.gid, dx: g.dx + lx / (o.fontSize * o.scaleX), dy: g.dy + ly / (o.fontSize * o.scaleY), scaleX: prior?.scaleX ?? 1, scaleY: prior?.scaleY ?? 1, thickness: prior?.thickness ?? 0 };
-      const glyphs = [...baseObj.glyphs.filter((x) => !(x.at === g.at && x.gid === g.gid)), edit];
+      const a = docToLocal(o, g.start);
+      const b = docToLocal(o, p);
+      const glyphs = moveGlyphs(o.glyphs, g.refs, (b[0] - a[0]) / o.fontSize, (b[1] - a[1]) / o.fontSize);
+      replaceDoc({ ...cur, objects: cur.objects.map((x) => (x.id === g.id ? { ...(x as TextObject), glyphs } : x)) });
+      return;
+    }
+    if (g.mode === "glyph-scale" || g.mode === "glyph-rotate") {
+      const o = g.obj;
+      const [px, py] = docToLocal(o, p);
+      const [cx, cy] = g.centre;
+      let patch: Partial<GlyphAdjust>;
+      if (g.mode === "glyph-rotate") {
+        const a0 = Math.atan2(g.startLocal[1] - cy, g.startLocal[0] - cx);
+        const a1 = Math.atan2(py - cy, px - cx);
+        let rot = g.adj.rotation + ((a1 - a0) * 180) / Math.PI;
+        if (e.shiftKey) rot = Math.round(rot / 15) * 15;
+        patch = { rotation: rot };
+      } else {
+        // Measure along the glyph's own (rotated) axes so width and height stay independent.
+        const r = (-g.adj.rotation * Math.PI) / 180;
+        const toAxes = (x: number, y: number) => [Math.abs((x - cx) * Math.cos(r) - (y - cy) * Math.sin(r)), Math.abs((x - cx) * Math.sin(r) + (y - cy) * Math.cos(r))];
+        const [x0, y0] = toAxes(g.startLocal[0], g.startLocal[1]);
+        const [x1, y1] = toAxes(px, py);
+        let fx = x0 > 0.5 ? x1 / x0 : 1;
+        let fy = y0 > 0.5 ? y1 / y0 : 1;
+        if (e.shiftKey) fx = fy = Math.max(fx, fy);
+        patch = { scaleX: g.adj.scaleX * fx, scaleY: g.adj.scaleY * fy };
+      }
+      const glyphs = patchGlyphs(o.glyphs, [g.ref], patch);
       replaceDoc({ ...cur, objects: cur.objects.map((x) => (x.id === g.id ? { ...(x as TextObject), glyphs } : x)) });
       return;
     }
@@ -260,12 +292,27 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
   const beginGlyph = (e: RPointerEvent, obj: TextObject, at: number, gid: number) => {
     e.stopPropagation();
     if (spaceDown) return startPan(e);
-    setSelectedId(obj.id);
-    setGlyphEdit({ objectId: obj.id, at, gid });
-    setMarkEdit(null);
+    const ref: GlyphRef = { at, gid };
+    const current = glyphEdit?.objectId === obj.id ? glyphEdit.refs : [];
+    // Shift / Ctrl / Cmd adds or removes a letter from the selection without dragging.
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      setGlyphEdit({ objectId: obj.id, refs: toggleRef(current, ref) });
+      return;
+    }
+    // Dragging a letter that is already selected moves the whole selection.
+    const inSel = current.some((r) => sameRef(r, ref));
+    const refs = inSel ? [...current.filter((r) => !sameRef(r, ref)), ref] : [ref];
+    setGlyphEdit({ objectId: obj.id, refs });
     if (obj.locked) return;
-    const adj = obj.glyphs.find((x) => x.at === at && x.gid === gid);
-    gesture.current = { mode: "glyph", id: obj.id, start: toDoc(e.clientX, e.clientY), base: doc, obj, at, gid, dx: adj?.dx ?? 0, dy: adj?.dy ?? 0 };
+    gesture.current = { mode: "glyph", id: obj.id, start: toDoc(e.clientX, e.clientY), base: doc, obj, refs };
+    listen();
+  };
+
+  const beginGlyphHandle = (e: RPointerEvent, mode: "glyph-scale" | "glyph-rotate", obj: TextObject, ref: GlyphRef, centre: [number, number]) => {
+    e.stopPropagation();
+    if (obj.locked) return;
+    const adj = getGlyphAdjust(obj.glyphs, ref) ?? neutralAdjust(ref);
+    gesture.current = { mode, id: obj.id, base: doc, obj, ref, centre, startLocal: docToLocal(obj, toDoc(e.clientX, e.clientY)), adj };
     listen();
   };
 
@@ -288,6 +335,8 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
   const selected = doc.objects.find((o) => o.id === selectedId && !o.hidden);
   const markObj = markEdit ? (doc.objects.find((o) => o.id === markEdit.objectId && o.type === "text" && !o.hidden) as TextObject | undefined) : undefined;
   const markLayout = markObj ? glyphLayoutFor(markObj, true) : null;
+  const glyphObj = glyphEdit ? (doc.objects.find((o) => o.id === glyphEdit.objectId && o.type === "text" && !o.hidden) as TextObject | undefined) : undefined;
+  const glyphLayout = glyphObj ? glyphLayoutFor(glyphObj, true) : null;
   const hs = 10 / zoom;
   const pad = 80;
 
@@ -395,6 +444,9 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
         }
         if (editor.tool === "node") return;
         if (markEdit) return setMarkEdit({ ...markEdit, at: null });
+        // Letter mode: first click outside clears the picked letters, the next one leaves the mode.
+        if (glyphEdit?.refs.length) return setGlyphEdit({ ...glyphEdit, refs: [] });
+        if (glyphEdit) setGlyphEdit(null);
         setSelectedId(null);
       }}
       onDoubleClick={(e) => {
@@ -422,6 +474,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
             {doc.objects.map((o) => {
               if (o.hidden) return null;
               const inMarkMode = o.id === markObj?.id;
+              const inGlyphMode = o.id === glyphObj?.id;
               return (
                 <g
                   key={o.id}
@@ -436,6 +489,10 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                     if (inMarkMode) {
                       e.stopPropagation();
                       setMarkEdit({ objectId: o.id, at: null });
+                    } else if (inGlyphMode) {
+                      // Empty space inside the text (letters handle their own clicks).
+                      e.stopPropagation();
+                      if (!e.shiftKey && !e.ctrlKey && !e.metaKey) setGlyphEdit({ objectId: o.id, refs: [] });
                     } else begin(e, "move", o);
                   }}
                   onDoubleClick={(e) => {
@@ -451,12 +508,12 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                         editor.setDoc({ ...doc, objects: doc.objects.map((item) => item.id === o.id ? updated : item) });
                         editor.setNodeSel([[hit.contour, result.index]]);
                       }
-                    } else if (o.type === "text" && !inMarkMode) onEditText(o.id);
+                    } else if (o.type === "text" && !inMarkMode && !inGlyphMode) onEditText(o.id);
                   }}
-                  style={{ cursor: inMarkMode ? "default" : o.locked ? "not-allowed" : editor.tool === "node" ? "crosshair" : "move" }}
+                  style={{ cursor: inMarkMode || inGlyphMode ? "default" : o.locked ? "not-allowed" : editor.tool === "node" ? "crosshair" : "move" }}
                   data-object-id={o.id}
                 >
-                  <ObjectShape o={o} forceGlyph={inMarkMode || glyphEdit?.objectId === o.id} selectedGlyph={glyphEdit?.objectId === o.id ? glyphEdit : null} onGlyphPointerDown={beginGlyph} />
+                  <ObjectShape o={o} forceGlyph={inMarkMode || inGlyphMode} interactiveGlyphs={inGlyphMode} onGlyphPointerDown={beginGlyph} />
                 </g>
               );
             })}
@@ -500,7 +557,10 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
                 }))}
               </g>
             )}
-            {selected && !markObj && editor.tool !== "node" && <SelectionBox o={selected} hs={hs} zoom={zoom} onHandle={begin} />}
+            {selected && !markObj && !glyphObj && editor.tool !== "node" && <SelectionBox o={selected} hs={hs} zoom={zoom} onHandle={begin} />}
+            {glyphObj && glyphLayout && glyphEdit && (
+              <GlyphOverlay o={glyphObj} layout={glyphLayout} refs={glyphEdit.refs} zoom={zoom} onHandle={beginGlyphHandle} />
+            )}
             {markObj && markLayout && (
               <MarkOverlay o={markObj} layout={markLayout} selectedAt={markEdit?.at ?? null} zoom={zoom} onPick={beginMark} />
             )}
@@ -511,7 +571,63 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
   );
 }
 
-function ObjectShape({ o, forceGlyph, selectedGlyph, onGlyphPointerDown }: { o: EditorObject; forceGlyph: boolean; selectedGlyph: { at: number; gid: number } | null; onGlyphPointerDown: (e: RPointerEvent, o: TextObject, at: number, gid: number) => void }) {
+/**
+ * Letter-mode overlay in document space: a dashed frame around the text, a
+ * frame around every picked letter, and — for a single picked letter — corner
+ * handles (independent width/height, Shift = proportional) and a rotation
+ * handle (Shift = 15° steps).
+ */
+function GlyphOverlay({ o, layout, refs, zoom, onHandle }: {
+  o: TextObject;
+  layout: TextLayout;
+  refs: GlyphRef[];
+  zoom: number;
+  onHandle: (e: RPointerEvent, mode: "glyph-scale" | "glyph-rotate", o: TextObject, ref: GlyphRef, centre: [number, number]) => void;
+}) {
+  const om = objectMatrix(o);
+  const toDocPt = (p: [number, number]) => applyMat(om, p[0], p[1]);
+  const sw = 1.5 / zoom;
+  const hs = 9 / zoom;
+  const objCorners = ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sy]) => toDocPt([(sx * layout.boxWidth) / 2, (sy * layout.boxHeight) / 2]));
+  const frames = refs.flatMap((r) => {
+    const g = findGlyph(layout, r);
+    const corners = g && glyphCorners(g);
+    return g && corners ? [{ r, g, corners }] : [];
+  });
+  const primary = refs.length === 1 ? frames[0] : undefined;
+  const poly = (pts: [number, number][]) => pts.map((p) => p.join(",")).join(" ");
+  return (
+    <g data-glyph-overlay="">
+      <polygon points={poly(objCorners)} fill="none" stroke="var(--selection)" strokeWidth={1 / zoom} strokeDasharray={`${4 / zoom} ${3 / zoom}`} pointerEvents="none" />
+      {frames.map(({ r, corners }) => (
+        <polygon key={`${r.at}:${r.gid}`} points={poly(corners.map(toDocPt))} fill="color-mix(in oklab, var(--selection) 10%, transparent)" stroke="var(--selection)" strokeWidth={sw} pointerEvents="none" data-glyph-frame={`${r.at}:${r.gid}`} />
+      ))}
+      {primary && !o.locked && (() => {
+        const local = primary.corners;
+        const c: [number, number] = [(local[0]![0] + local[2]![0]) / 2, (local[0]![1] + local[2]![1]) / 2];
+        const d = local.map(toDocPt);
+        const cd = toDocPt(c);
+        // Top edge = font-units top (y up), i.e. corners 0 and 1.
+        const top: [number, number] = [(d[0]![0] + d[1]![0]) / 2, (d[0]![1] + d[1]![1]) / 2];
+        const len = Math.hypot(top[0] - cd[0], top[1] - cd[1]) || 1;
+        const rot: [number, number] = [top[0] + ((top[0] - cd[0]) / len) * 26 / zoom, top[1] + ((top[1] - cd[1]) / len) * 26 / zoom];
+        return (
+          <>
+            <line x1={top[0]} y1={top[1]} x2={rot[0]} y2={rot[1]} stroke="var(--selection)" strokeWidth={sw} pointerEvents="none" />
+            <circle cx={rot[0]} cy={rot[1]} r={hs / 1.5} fill="var(--card)" stroke="var(--selection)" strokeWidth={sw} style={{ cursor: "grab" }}
+              onPointerDown={(e) => onHandle(e, "glyph-rotate", o, primary.r, c)} aria-label="Rotate letter" data-glyph-handle="rotate" />
+            {d.map((p, i) => (
+              <rect key={i} x={p[0] - hs / 2} y={p[1] - hs / 2} width={hs} height={hs} fill="var(--card)" stroke="var(--selection)" strokeWidth={sw} style={{ cursor: "nwse-resize" }}
+                onPointerDown={(e) => onHandle(e, "glyph-scale", o, primary.r, c)} aria-label="Resize letter" data-glyph-handle={`corner-${i}`} />
+            ))}
+          </>
+        );
+      })()}
+    </g>
+  );
+}
+
+function ObjectShape({ o, forceGlyph, interactiveGlyphs, onGlyphPointerDown }: { o: EditorObject; forceGlyph: boolean; interactiveGlyphs: boolean; onGlyphPointerDown: (e: RPointerEvent, o: TextObject, at: number, gid: number) => void }) {
   if (o.type === "shape") {
     const { width, height } = o;
     return (
