@@ -3,7 +3,7 @@ import { indexRemapper, remapAdjustments } from "./remap";
 
 describe("calligraphy adjustment remapping", () => {
   const mark = { at: 1, ch: "\u0650", dx: 0.1, dy: -0.05, scale: 1.2 };
-  const glyph = { at: 2, gid: 91, dx: 0.1, dy: -0.1, scaleX: 1.2, scaleY: 0.9, thickness: 1 };
+  const glyph = { at: 2, gid: 91, dx: 0.1, dy: -0.1, scaleX: 1.2, scaleY: 0.9, thickness: 1, rotation: 0 };
 
   it("keeps existing adjustments when text is inserted at the beginning", () => {
     const result = remapAdjustments({ text: "بِسْمِ", kashida: [{ at: 2, count: 2 }], marks: [mark], glyphs: [glyph] }, "ٱبِسْمِ");
