@@ -164,7 +164,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       } else {
         // Measure along the glyph's own (rotated) axes so width and height stay independent.
         const r = (-g.adj.rotation * Math.PI) / 180;
-        const toAxes = (x: number, y: number) => [Math.abs((x - cx) * Math.cos(r) - (y - cy) * Math.sin(r)), Math.abs((x - cx) * Math.sin(r) + (y - cy) * Math.cos(r))];
+        const toAxes = (x: number, y: number): [number, number] => [Math.abs((x - cx) * Math.cos(r) - (y - cy) * Math.sin(r)), Math.abs((x - cx) * Math.sin(r) + (y - cy) * Math.cos(r))];
         const [x0, y0] = toAxes(g.startLocal[0], g.startLocal[1]);
         const [x1, y1] = toAxes(px, py);
         let fx = x0 > 0.5 ? x1 / x0 : 1;
@@ -664,7 +664,7 @@ function ObjectShape({ o, forceGlyph, interactiveGlyphs, onGlyphPointerDown }: {
     );
   }
   const layout = glyphLayoutFor(o, forceGlyph);
-  if (layout) return <GlyphText o={o} layout={layout} selectedGlyph={selectedGlyph} onGlyphPointerDown={onGlyphPointerDown} />;
+  if (layout) return <GlyphText o={o} layout={layout} interactive={interactiveGlyphs} onGlyphPointerDown={onGlyphPointerDown} />;
   // Live browser text (also the fallback while the glyph engine loads or cannot read the font).
   const { width, height } = objectSize(o);
   const ax = lineAnchorX(o, width);
