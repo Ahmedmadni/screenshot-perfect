@@ -68,13 +68,15 @@ export function CalligraphyPanel({ editor, o }: { editor: Editor; o: TextObject 
 
   const layout = font ? glyphEngine.layout(o) : null;
   const editingGlyph = glyphEdit?.objectId === o.id;
-  const selectedGlyphLayout = editingGlyph ? layout?.glyphs.find((g) => g.editAt === glyphEdit.at && g.gid === glyphEdit.gid) : undefined;
-  const glyphAdjustment = editingGlyph ? o.glyphs.find((g) => g.at === glyphEdit.at && g.gid === glyphEdit.gid) : undefined;
+  const primaryRef = editingGlyph ? glyphEdit.refs[glyphEdit.refs.length - 1] : undefined;
+  const selRefs = editingGlyph ? glyphEdit.refs : [];
+  const selectedGlyphLayout = primaryRef ? layout?.glyphs.find((g) => g.editAt === primaryRef!.at && g.gid === primaryRef!.gid) : undefined;
+  const glyphAdjustment = primaryRef ? o.glyphs.find((g) => g.at === primaryRef!.at && g.gid === primaryRef!.gid) : undefined;
   const setGlyph = (patch: Partial<NonNullable<typeof glyphAdjustment>>, key: string) => {
-    if (!editingGlyph || !glyphEdit) return;
-    const current = glyphAdjustment ?? { at: glyphEdit.at, gid: glyphEdit.gid, dx: 0, dy: 0, scaleX: 1, scaleY: 1, thickness: 0 };
-    const next = { ...current, ...patch };
-    up({ glyphs: [...o.glyphs.filter((g) => !(g.at === glyphEdit.at && g.gid === glyphEdit.gid)), next] }, `glyph:${glyphEdit.at}:${key}`);
+    if (!primaryRef) return;
+    const current = glyphAdjustment ?? { at: primaryRef!.at, gid: primaryRef!.gid, dx: 0, dy: 0, scaleX: 1, scaleY: 1, thickness: 0, rotation: 0 };
+    const next = { ...current, ...patch, rotation: patch.rotation ?? current.rotation ?? 0 };
+    up({ glyphs: [...o.glyphs.filter((g) => !(g.at === primaryRef!.at && g.gid === primaryRef!.gid)), next] }, `glyph:${primaryRef!.at}:${key}`);
   };
   const editingMarks = markEdit?.objectId === o.id;
   const at = editingMarks ? markEdit.at : null;
@@ -106,23 +108,23 @@ export function CalligraphyPanel({ editor, o }: { editor: Editor; o: TextObject 
             {layout && (
               <div className="grid grid-cols-5 gap-1.5">
                 {layout.glyphs.filter((g) => g.editAt >= 0 && !g.mark && g.d).map((g, i) => {
-                  const active = editingGlyph && glyphEdit.at === g.editAt && glyphEdit.gid === g.gid;
+                  const active = selRefs.some((r) => r.at === g.editAt && r.gid === g.gid);
                   const label = o.text[g.editAt] ?? "؟";
-                  return <button key={`${g.editAt}-${g.gid}-${i}`} type="button" onClick={() => { setMarkEdit(null); setGlyphEdit({ objectId: o.id, at: g.editAt, gid: g.gid }); }}
+                  return <button key={`${g.editAt}-${g.gid}-${i}`} type="button" onClick={() => { setMarkEdit(null); setGlyphEdit({ objectId: o.id, refs: [{ at: g.editAt, gid: g.gid }] }); }}
                     data-active={!!active} className="flex h-10 items-center justify-center rounded border border-input bg-card text-xl data-[active=true]:border-primary data-[active=true]:bg-primary/10" title={`الحرف ${label} · وحدة ${g.gid} · موضع ${g.editAt}`}>{label}</button>;
                 })}
               </div>
             )}
             {editingGlyph && selectedGlyphLayout ? (
               <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-2">
-                <div className="flex items-center justify-between text-xs font-semibold"><span>الحرف المحدد: {o.text[glyphEdit.at] ?? "؟"}</span><Button size="sm" variant="ghost" onClick={() => setGlyphEdit(null)}>إلغاء التحديد</Button></div>
+                <div className="flex items-center justify-between text-xs font-semibold"><span>الحرف المحدد: {o.text[primaryRef!.at] ?? "؟"}</span><Button size="sm" variant="ghost" onClick={() => setGlyphEdit(null)}>إلغاء التحديد</Button></div>
                 <SmallNum label="الإزاحة الأفقية" suffix="em" step={0.01} value={glyphAdjustment?.dx ?? 0} onChange={(n) => setGlyph({ dx: n }, "dx")} />
                 <SmallNum label="الإزاحة الرأسية" suffix="em" step={0.01} value={glyphAdjustment?.dy ?? 0} onChange={(n) => setGlyph({ dy: n }, "dy")} />
                 <SmallNum label="العرض الأفقي" suffix="%" step={1} min={20} max={300} value={(glyphAdjustment?.scaleX ?? 1) * 100} onChange={(n) => setGlyph({ scaleX: n / 100 }, "width")} />
                 <SmallNum label="الارتفاع الرأسي" suffix="%" step={1} min={20} max={300} value={(glyphAdjustment?.scaleY ?? 1) * 100} onChange={(n) => setGlyph({ scaleY: n / 100 }, "height")} />
                 <SmallNum label="سُمك إضافي" suffix="px" step={0.5} min={0} max={24} value={glyphAdjustment?.thickness ?? 0} onChange={(n) => setGlyph({ thickness: n }, "thickness")} />
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => up({ glyphs: o.glyphs.filter((g) => !(g.at === glyphEdit.at && g.gid === glyphEdit.gid)) })}>إعادة ضبط الحرف</Button>
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => up({ glyphs: o.glyphs.filter((g) => !(g.at === primaryRef!.at && g.gid === primaryRef!.gid)) })}>إعادة ضبط الحرف</Button>
                   <Button size="sm" variant="outline" className="flex-1" onClick={() => { up({ glyphs: [] }); setGlyphEdit(null); }}>إعادة ضبط الكل</Button>
                 </div>
               </div>
