@@ -79,6 +79,7 @@ import {
 } from "@/editor/storage";
 import { useEditor } from "@/editor/useEditor";
 import { createFloralRosette } from "@/editor/ornaments";
+import { createCalligraphicMark } from "@/editor/calligraphy/decorationMarks";
 import { CanvasView } from "./CanvasView";
 import { LeftPanel } from "./LeftPanel";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -216,6 +217,12 @@ export function Editor() {
   };
   const addShape = (k: ShapeKind) => addObject(createShape(doc, k));
   const insertDecoration = (value: string, x = doc.width / 2, y = doc.height / 2) => {
+    if (value.startsWith("@mark:")) {
+      const color = editor.selected?.type === "text" ? editor.selected.color : editor.selected?.type === "path" && editor.selected.fill !== "transparent" ? editor.selected.fill : createText(doc).color;
+      const mark = createCalligraphicMark(value.slice(6), x, y, insertSize, color);
+      if (mark) addObject(mark);
+      return;
+    }
     if (value.startsWith("@vector:")) {
       const kind = value.slice(8);
       if (kind === "floral") {

@@ -190,6 +190,7 @@ export function CanvasView({ editor, zoom, onZoom, showChecker, showBounds, onEd
       replaceDoc({ ...cur, objects: cur.objects.map((x) => (x.id === g.id ? { ...(x as TextObject), marks } : x)) });
       return;
     }
+    if (!("start" in g)) return;
     const o = g.obj;
     let patch: Partial<EditorObject> = {};
     if (g.mode === "move") {

@@ -1,5 +1,10 @@
 # Roadmap — Arabic Calligraphy Studio
 
+## Current request — expanded calligraphic marks
+- [x] Add 24 original editable vector marks (vowels, tanwin, combined shadda, and calligraphic fillers), not dotted-circle Unicode substitutes. These are not a reproduction of a proprietary Kelk/Kaleem library.
+- [x] Show actual silhouette previews; browser-verified click insertion, canvas drop, resizing to 140px, save/reload, and mobile library at 390×844. Native-path SVG serialization and project round-trip covered by tests; standalone PNG/PDF viewer comparison remains in the existing export acceptance backlog.
+- [x] Fix existing canvas gesture compilation error; preview reports build OK and all 105 tests pass.
+
 ## Milestone 2 — Advanced calligraphy controls
 
 ### Implemented in source (verification still required)
