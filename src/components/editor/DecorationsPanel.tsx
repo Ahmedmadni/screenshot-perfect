@@ -58,12 +58,11 @@ export function DecorationsPanel({ onInsert, footer }: { onInsert: (value: strin
       {groups.map((group)=>
         <section key={group.title} className="mb-4">
           {(filter==="all" && !query) && <h3 className="panel-label mb-2">{group.title}</h3>}
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(68px,1fr))] gap-1.5">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2">
             {items.filter((item)=>group.items.includes(item)).map((item,i)=><Button variant="outline" key={group.title+i+item.label} type="button" draggable
               onDragStart={(e)=>startDrag(e,item.value)} onClick={()=>onInsert(item.value)} title={item.label} aria-label={item.label}
-              className="h-[88px] min-w-0 flex-col gap-1 border-border bg-card p-1.5 hover:border-primary active:scale-95">
-              {item.d ? <MarkPreview d={item.d} /> : <span dir="rtl" className="max-w-full truncate text-2xl leading-8 text-foreground" style={{ fontFamily: item.category === "marks" ? "\"Amiri\", serif" : undefined }}>{item.category === "vectors" ? "◈" : item.value}</span>}
-              <span className="w-full whitespace-normal text-center text-[9px] leading-3 text-muted-foreground">{item.label}</span>
+              className="h-24 min-w-0 items-center justify-center border-border bg-card p-2 hover:border-primary active:scale-95">
+              {item.d ? <MarkPreview d={item.d} /> : <span dir="rtl" className="max-w-full truncate text-4xl leading-none text-foreground" style={{ fontFamily: item.category === "marks" ? "\"Amiri\", serif" : undefined }}>{item.category === "vectors" ? "◈" : item.value}</span>}
             </Button>)}
           </div>
         </section>
