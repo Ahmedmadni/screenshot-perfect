@@ -77,7 +77,7 @@ export function DecorationsPanel({ onInsert, footer }: { onInsert: (value: strin
 function MarkPreview({ d }: { d: string }) {
   const b = useMemo(() => contoursBounds(segsToContours(parsePath(d))), [d]);
   const viewBox = b ? `${b.minX - 8} ${b.minY - 8} ${b.maxX - b.minX + 16} ${b.maxY - b.minY + 16}` : "0 0 100 100";
-  return <svg viewBox={viewBox} className="h-11 w-full text-foreground" aria-hidden="true">
+  return <svg viewBox={viewBox} className="h-16 w-full text-foreground" aria-hidden="true">
     <path d={d} fill="currentColor" fillRule="evenodd" />
   </svg>;
 }
